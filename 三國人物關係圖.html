@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>三國人物關係圖 · 大事年表</title>
+<style>
+:root{
+  --paper:#f2e9d5; --paper-2:#e9dfc7; --ink:#2c261d; --ink-2:#5c5243; --ink-3:#8b7f69;
+  --line:#c4b291; --accent:#8c2f28; --sea:#dde6e6;
+  --wei:#6d92b6; --shu:#7d9f6d; --wu:#bd8474; --qun:#b09a6a; --sima:#8d7fa8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"Songti TC","Songti SC","STSong","SimSun","Noto Serif TC",serif;
+  background:var(--paper); color:var(--ink); overflow:hidden;
+  background-image:radial-gradient(circle at 18% 6%, #fbf4e4 0%, transparent 42%),
+                   radial-gradient(circle at 88% 92%, #e8dcc2 0%, transparent 48%);
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.app{display:flex;flex-direction:column;height:100vh}
+
+header{flex:none;height:62px;display:flex;align-items:center;gap:22px;padding:0 22px;
+  border-bottom:1px solid var(--line);background:rgba(233,223,199,.7)}
+.brand{font-size:20px;letter-spacing:6px;white-space:nowrap}
+.brand small{font-size:11px;letter-spacing:3px;color:var(--ink-3);margin-left:8px}
+.tabs{display:flex;gap:2px;padding-left:18px;border-left:1px solid var(--line)}
+.tab{font-size:13.5px;letter-spacing:3px;padding:6px 16px;border-radius:2px;color:var(--ink-3);transition:.18s}
+.tab:hover{color:var(--ink-2)}
+.tab.on{color:var(--accent);background:rgba(255,250,240,.9);box-shadow:inset 0 -2px 0 var(--accent)}
+.spacer{flex:1}
+.hint{font-size:11.5px;color:var(--ink-3);letter-spacing:1px}
+
+.main{flex:1;display:flex;min-height:0;position:relative}
+.view{position:absolute;inset:0;display:none}
+.view.on{display:flex}
+
+/* ── 關係圖 ── */
+.graphwrap{flex:1;position:relative;min-width:0}
+svg#graph{width:100%;height:100%;display:block;cursor:grab}
+svg#graph.drag{cursor:grabbing}
+
+.link{stroke-linecap:round;fill:none;transition:opacity .18s}
+.link.kin{stroke:#9b8b6e;stroke-width:1.15;opacity:.5}
+.link.blood{stroke:#7a5f3e;stroke-width:2.2;opacity:.72}
+.link.marr{stroke:#b07a92;stroke-width:1.5;stroke-dasharray:5 4;opacity:.72}
+.link.oath{stroke:#a8862f;stroke-width:2.4;opacity:.82}
+.link.foe{stroke:#a63f34;stroke-width:1.4;stroke-dasharray:2 5;opacity:.6}
+.link.friend{stroke:#5f8a86;stroke-width:1.4;stroke-dasharray:1 4;opacity:.62}
+.link.dim{opacity:.05}
+
+.node{cursor:pointer}
+.node circle{stroke:#fffaf0;stroke-width:1.4;transition:.18s}
+.node text{font-size:11.5px;fill:#2c261d;text-anchor:middle;pointer-events:none;
+  paint-order:stroke;stroke:rgba(250,244,230,.95);stroke-width:3px;letter-spacing:.5px}
+.node.dim{opacity:.13}
+.node.hi circle{stroke:var(--accent);stroke-width:2.2}
+.node.sel circle{stroke:var(--accent);stroke-width:2.6}
+
+/* ── 側欄 ── */
+aside{width:322px;flex:none;border-left:1px solid var(--line);background:rgba(242,233,213,.74);
+  display:flex;flex-direction:column;min-height:0}
+.side-head{padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+.side-name{font-size:21px;letter-spacing:4px;margin-bottom:3px}
+.side-name em{font-style:normal;font-size:12px;color:var(--ink-3);letter-spacing:2px;margin-left:8px}
+.side-meta{font-size:11.5px;color:var(--ink-3);letter-spacing:1px;line-height:1.9;margin-top:6px}
+.side-note{font-size:12.5px;line-height:2;color:var(--ink-2);margin-top:10px}
+.side-body{flex:1;overflow-y:auto;padding:14px 18px 20px}
+.side-body::-webkit-scrollbar{width:6px}
+.side-body::-webkit-scrollbar-thumb{background:#cdbc9b;border-radius:3px}
+.relgroup{margin-bottom:14px}
+.relgroup h4{font-size:11px;letter-spacing:3px;color:var(--ink-3);font-weight:400;
+  border-bottom:1px dotted var(--line);padding-bottom:5px;margin-bottom:7px}
+.relrow{display:flex;align-items:baseline;gap:8px;padding:4px 2px;font-size:12.5px;cursor:pointer;border-radius:2px}
+.relrow:hover{background:rgba(255,250,240,.85)}
+.relrow .rn{letter-spacing:1px}
+.relrow .rt{font-size:10.5px;color:var(--ink-3);margin-left:auto;letter-spacing:1px}
+.empty{font-size:12px;color:var(--ink-3);line-height:2}
+
+.legend{flex:none;border-top:1px solid var(--line);padding:10px 18px 12px;font-size:11px;color:var(--ink-3)}
+.legend .lrow{display:flex;align-items:center;gap:7px;margin-bottom:4px;letter-spacing:1px}
+.legend .lsw{width:26px;height:0;border-top-width:2px;border-top-style:solid;flex:none}
+
+/* ── 年表 ── */
+.timeline{flex:1;overflow-y:auto;padding:26px 0 60px;min-width:0}
+.timeline::-webkit-scrollbar{width:7px}
+.timeline::-webkit-scrollbar-thumb{background:#cdbc9b;border-radius:4px}
+.tl-inner{max-width:920px;margin:0 auto;padding:0 46px 0 128px;position:relative}
+.tl-inner::before{content:"";position:absolute;left:112px;top:8px;bottom:0;width:1.5px;
+  background:linear-gradient(#b8a480, #b8a480 94%, transparent)}
+.tl-year{position:relative;margin-bottom:2px;padding-top:26px}
+.tl-year:first-child{padding-top:0}
+.tl-year .yr{position:absolute;left:-128px;top:24px;width:96px;text-align:right;
+  font-size:22px;letter-spacing:2px;color:var(--accent);font-weight:600}
+.tl-year:first-child .yr{top:0}
+.tl-year .yr small{display:block;font-size:10.5px;color:var(--ink-3);letter-spacing:1px;font-weight:400;margin-top:1px}
+.tl-year .dot{position:absolute;left:-20px;top:30px;width:9px;height:9px;border-radius:50%;
+  background:var(--accent);border:2px solid var(--paper);box-shadow:0 0 0 1px var(--line)}
+.tl-year:first-child .dot{top:6px}
+.ev{position:relative;padding:9px 14px;margin-bottom:7px;border-radius:2px;
+  background:rgba(255,250,240,.6);border:1px solid rgba(196,178,145,.5);transition:.16s}
+.ev:hover{background:rgba(255,250,240,.98);border-color:var(--line)}
+.ev.hide{display:none}
+.ev .et{font-size:14px;letter-spacing:2px;margin-bottom:4px}
+.ev .ed{font-size:12.5px;line-height:1.95;color:var(--ink-2)}
+.ev .tag{display:inline-block;font-size:10px;letter-spacing:2px;padding:1px 7px;border-radius:2px;
+  margin-right:8px;vertical-align:1px;color:#fffaf0}
+.tag.war{background:#a04a3c}
+.tag.pol{background:#6d7f8f}
+.tag.per{background:#8a7a52}
+.tag.idea{background:#5f8a86}
+
+.filters{flex:none;display:flex;gap:8px;align-items:center;padding:0 22px 0 0;margin-left:auto}
+.fbtn{font-size:11.5px;letter-spacing:2px;padding:4px 12px;border:1px solid var(--line);border-radius:2px;
+  color:var(--ink-3);transition:.16s;background:rgba(255,250,240,.5)}
+.fbtn:hover{border-color:var(--ink-3);color:var(--ink-2)}
+.fbtn.on{background:var(--accent);color:#fffaf0;border-color:var(--accent)}
+
+@media (max-width:940px){ aside{width:262px} .hint{display:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">三國人物圖<small>關係 · 年表</small></div>
+    <div class="tabs">
+      <button class="tab on" data-view="graph">人物關係</button>
+      <button class="tab" data-view="time">大事年表</button>
+    </div>
+    <div class="spacer"></div>
+    <div class="hint" id="hint">點擊人物看事略　·　拖曳畫布可平移</div>
+    <div class="filters" id="filters" style="display:none">
+      <button class="fbtn on" data-cat="all">全部</button>
+      <button class="fbtn" data-cat="war">戰爭</button>
+      <button class="fbtn" data-cat="pol">政治</button>
+      <button class="fbtn" data-cat="per">人物</button>
+      <button class="fbtn" data-cat="idea">計謀</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- 關係圖 -->
+    <div class="view on" id="view-graph">
+      <div class="graphwrap">
+        <svg id="graph" viewBox="0 0 1000 780" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <aside>
+        <div class="side-head" id="sideHead"></div>
+        <div class="side-body" id="sideBody"></div>
+        <div class="legend">
+          <div class="lrow"><span class="lsw" style="border-top-color:#7a5f3e;border-top-width:2.2px"></span>血親</div>
+          <div class="lrow"><span class="lsw" style="border-top-color:#9b8b6e"></span>君臣</div>
+          <div class="lrow"><span class="lsw" style="border-top-color:#b07a92;border-top-style:dashed"></span>姻親</div>
+          <div class="lrow"><span class="lsw" style="border-top-color:#a8862f;border-top-width:2.4px"></span>結義</div>
+          <div class="lrow"><span class="lsw" style="border-top-color:#a63f34;border-top-style:dotted"></span>敵對</div>
+          <div class="lrow"><span class="lsw" style="border-top-color:#5f8a86;border-top-style:dotted"></span>師友</div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- 年表 -->
+    <div class="view" id="view-time">
+      <div class="timeline" id="timeline"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ══════════════════════════════════════════
+   一、人物資料
+   g: wei/shu/wu/qun/sima    r: 節點半徑   字: 表字
+   ══════════════════════════════════════════ */
+const P = {
+  /* ── 曹魏 ── */
+  caocao:  {n:'曹操', z:'孟德', g:'wei', r:15, life:'155–220', ttl:'魏武帝', note:'沛國譙人。起兵討董卓，迎獻帝都許，挾天子以令諸侯。官渡破袁紹，北征烏桓，奄有中原九州。赤壁折於孫劉，終身未稱帝。'},
+  caopi:   {n:'曹丕', z:'子桓', g:'wei', r:10, life:'187–226', ttl:'魏文帝', note:'曹操次子。與曹植爭嗣得勝，延康元年受漢禪，魏國始立。行九品中正制。'},
+  caozhi:  {n:'曹植', z:'子建', g:'wei', r:9,  life:'192–232', ttl:'陳思王', note:'七步成詩，才高八斗。爭嗣失敗，終身不用，封陳王，諡思。'},
+  xiahoudun:{n:'夏侯惇',z:'元讓', g:'wei', r:10, life:'?–220',  ttl:'大將軍', note:'曹操族弟。征呂布中流矢傷左目，拔矢啖睛。性清儉，有餘財輒散之。'},
+  xiahouyuan:{n:'夏侯淵',z:'妙才',g:'wei', r:9,  life:'?–219',  ttl:'征西將軍', note:'長於奔襲，軍中語曰「典軍校尉三日五百，六日一千」。定軍山為黃忠所斬。'},
+  xunyu:   {n:'荀彧', z:'文若', g:'wei', r:10, life:'163–212', ttl:'尚書令', note:'潁川名士。曹操稱之為「吾之子房」。諫阻魏公之議，憂卒。'},
+  guojia:  {n:'郭嘉', z:'奉孝', g:'wei', r:9,  life:'170–207', ttl:'軍師祭酒', note:'算無遺策。料孫策必死於匹夫之手，勸曹操速征烏桓。早卒，赤壁後曹操歎「郭奉孝在，不使孤至此」。'},
+  simayi:  {n:'司馬懿',z:'仲達',g:'sima',r:14, life:'179–251', ttl:'晉宣帝', note:'鷹視狼顧。拒諸葛亮於渭南，平遼東，高平陵之變盡誅曹爽，魏權盡歸司馬氏。'},
+  simashi: {n:'司馬師',z:'子元', g:'sima',r:9,  life:'208–255', ttl:'晉景帝', note:'司馬懿長子。廢魏帝曹芳，平毌丘儉之亂，目疾崩於許昌。'},
+  simazhao:{n:'司馬昭',z:'子上', g:'sima',r:11, life:'211–265', ttl:'晉文帝', note:'「司馬昭之心，路人皆知」。遣鍾會鄧艾滅蜀，受封晉王。'},
+  simayan: {n:'司馬炎',z:'安世', g:'sima',r:10, life:'236–290', ttl:'晉武帝', note:'受魏禪建晉，太康元年滅吳，天下一統。'},
+  zhangliao:{n:'張遼',z:'文遠', g:'wei', r:9,  life:'169–222', ttl:'前將軍', note:'本呂布部將，降曹。合肥八百破孫權十萬，江東小兒聞名止啼。'},
+  xuhuang: {n:'徐晃', z:'公明', g:'wei', r:8,  life:'?–227',  ttl:'右將軍', note:'治軍嚴整，曹操稱「有周亞夫之風」。樊城破關羽。'},
+  dianwei: {n:'典韋', z:'',     g:'wei', r:8,  life:'?–197',  ttl:'校尉', note:'形貌魁梧，力能雙戟挾人。宛城之變以身蔽曹操，力戰而死。'},
+  xuchu:   {n:'許褚', z:'仲康', g:'wei', r:8,  life:'?–230',  ttl:'武衛將軍', note:'虎癡。渭水單手舉鞍蔽曹操，裸衣鬥馬超。'},
+  yangxiu: {n:'楊修', z:'德祖', g:'wei', r:7,  life:'175–219', ttl:'主簿', note:'才捷善悟，「雞肋」之解觸忌，為曹操所殺。'},
+
+  /* ── 蜀漢 ── */
+  liubei:  {n:'劉備', z:'玄德', g:'shu', r:15, life:'161–223', ttl:'蜀漢昭烈帝', note:'中山靖王之後，織席販履。三顧茅廬得諸葛亮，取荊益，稱帝成都。夷陵敗後崩於白帝城。'},
+  guanyu:  {n:'關羽', z:'雲長', g:'shu', r:12, life:'?–220',  ttl:'前將軍', note:'河東解人。萬人敵，重然諾。水淹七軍威震華夏，呂蒙襲荊州，敗走麥城。'},
+  zhangfei:{n:'張飛', z:'翼德', g:'shu', r:11, life:'?–221',  ttl:'車騎將軍', note:'當陽長坂據水斷橋，瞋目大喝。愛敬君子不恤小人，終為帳下所害。'},
+  zhaoyun: {n:'趙雲', z:'子龍', g:'shu', r:10, life:'?–229',  ttl:'鎮東將軍', note:'長坂坡單騎救阿斗。一身是膽，諫劉備勿伐吳。'},
+  machao:  {n:'馬超', z:'孟起', g:'shu', r:10, life:'176–222', ttl:'驃騎將軍', note:'西涼錦馬超。潼關之戰幾擒曹操，後歸劉備，鎮羌胡。'},
+  huangzhong:{n:'黃忠',z:'漢升',g:'shu', r:9,  life:'?–220',  ttl:'後將軍', note:'定軍山斬夏侯淵，年七十餘猶能開二石弓。'},
+  zhugeliang:{n:'諸葛亮',z:'孔明',g:'shu',r:14, life:'181–234', ttl:'丞相', note:'躬耕南陽，隆中對定三分。治蜀十年，六出祁山，鞠躬盡瘁，卒於五丈原。'},
+  pangtong:{n:'龐統', z:'士元', g:'shu', r:9,  life:'179–214', ttl:'軍師中郎將', note:'鳳雛。獻連環計於赤壁，入蜀中流矢卒於落鳳坡。'},
+  fazheng: {n:'法正', z:'孝直', g:'shu', r:8,  life:'176–220', ttl:'尚書令', note:'奇謀之士。助劉備取益州、定漢中，劉備伐吳敗，諸葛亮歎「法孝直若在」。'},
+  weiyan:  {n:'魏延', z:'文長', g:'shu', r:8,  life:'?–234',  ttl:'征西大將軍', note:'獻子午谷奇謀未被納。諸葛亮卒後與楊儀爭權，敗亡。'},
+  jiangwei:{n:'姜維', z:'伯約', g:'shu', r:9,  life:'202–264', ttl:'大將軍', note:'天水降將，諸葛亮稱「涼州上士」。九伐中原，蜀亡後詐降鍾會，事敗自刎。'},
+  liushan: {n:'劉禪', z:'公嗣', g:'shu', r:9,  life:'207–271', ttl:'蜀漢後主', note:'在位四十一年。鄧艾兵臨，出降。樂不思蜀。'},
+  guanping:{n:'關平', z:'',     g:'shu', r:6,  life:'?–220',  ttl:'', note:'關羽長子，隨父守荊州，同歿於臨沮。'},
+  zhangbao:{n:'張苞', z:'',     g:'shu', r:6,  life:'?–?',    ttl:'', note:'張飛長子，早夭。'},
+
+  /* ── 孫吳 ── */
+  sunjian: {n:'孫堅', z:'文臺', g:'wu',  r:11, life:'155–191', ttl:'破虜將軍', note:'江東猛虎。討董卓先入洛陽，得傳國璽。征劉表時中伏身亡。'},
+  sunce:   {n:'孫策', z:'伯符', g:'wu',  r:11, life:'175–200', ttl:'討逆將軍', note:'江東小霸王。以玉璽借兵渡江，數年盡有江東六郡。獵於丹徒為刺客所傷。'},
+  sunquan: {n:'孫權', z:'仲謀', g:'wu',  r:14, life:'182–252', ttl:'吳大帝', note:'曹操歎「生子當如孫仲謀」。赤壁抗曹，夷陵拒劉，稱帝建業，在位五十二年。'},
+  zhouyu:  {n:'周瑜', z:'公瑾', g:'wu',  r:12, life:'175–210', ttl:'大都督', note:'「曲有誤，周郎顧」。赤壁火攻破曹，欲取益州，道卒巴丘。'},
+  lusu:    {n:'魯肅', z:'子敬', g:'wu',  r:9,  life:'172–217', ttl:'橫江將軍', note:'榻上策定江東之計。力主聯劉抗曹，周瑜之後領兵。'},
+  lvmeng:  {n:'呂蒙', z:'子明', g:'wu',  r:9,  life:'178–220', ttl:'虎威將軍', note:'吳下阿蒙，士別三日刮目相看。白衣渡江襲荊州，擒關羽。'},
+  luxun:   {n:'陸遜', z:'伯言', g:'wu',  r:11, life:'183–245', ttl:'丞相', note:'夷陵火燒連營七百里，破劉備。後遭孫權猜忌，憂憤卒。'},
+  ganning: {n:'甘寧', z:'興霸', g:'wu',  r:8,  life:'?–215',  ttl:'折衝將軍', note:'錦帆賊出身。百騎劫魏營。'},
+  taishici:{n:'太史慈',z:'子義',g:'wu',  r:8,  life:'166–206', ttl:'建昌都尉', note:'猿臂善射，弦不虛發。神亭酣戰孫策。'},
+  daqiao:  {n:'大喬', z:'',     g:'wu',  r:6,  life:'',       ttl:'', note:'橋公長女，嫁孫策。'},
+  xiaoqiao:{n:'小喬', z:'',     g:'wu',  r:6,  life:'',       ttl:'', note:'橋公次女，嫁周瑜。'},
+  sunshangxiang:{n:'孫夫人',z:'',g:'wu', r:6,  life:'',       ttl:'', note:'孫權之妹，嫁劉備。劉備入蜀後歸吳。'},
+
+  /* ── 群雄 ── */
+  dongzhuo:{n:'董卓', z:'仲穎', g:'qun', r:11, life:'?–192',  ttl:'相國', note:'涼州豪帥。廢少帝立獻帝，焚洛陽，遷長安。為呂布所誅，暴屍於市。'},
+  lvbu:    {n:'呂布', z:'奉先', g:'qun', r:12, life:'?–199',  ttl:'', note:'人中呂布，馬中赤兔。轅門射戟，反覆無常，白門樓縊死。'},
+  yuanshao:{n:'袁紹', z:'本初', g:'qun', r:12, life:'?–202',  ttl:'', note:'四世三公。盡有河北四州，官渡敗於曹操，憂憤嘔血卒。'},
+  yuanshu: {n:'袁術', z:'公路', g:'qun', r:9,  life:'?–199',  ttl:'', note:'得玉璽僭號仲家於壽春，眾叛親離，嘔血而死。'},
+  liubiao: {n:'劉表', z:'景升', g:'qun', r:10, life:'142–208', ttl:'荊州牧', note:'單騎入宜城定荊州，坐保江漢十餘年。優柔寡斷，廢長立幼。'},
+  liuzhang:{n:'劉璋', z:'季玉', g:'qun', r:9,  life:'?–219',  ttl:'益州牧', note:'闇弱多疑，引劉備入蜀以拒張魯，反失益州。'},
+  gongsunzan:{n:'公孫瓚',z:'伯珪',g:'qun',r:9, life:'?–199',  ttl:'', note:'白馬義從，威震塞外。界橋敗於袁紹，自焚於易京樓。'},
+  mateng:  {n:'馬騰', z:'壽成', g:'qun', r:9,  life:'?–212',  ttl:'', note:'涼州軍閥，馬超之父。入朝為衛尉，後為曹操所殺。'},
+  zhangjiao:{n:'張角', z:'',    g:'qun', r:9,  life:'?–184',  ttl:'大賢良師', note:'太平道首領，以符水治病。黃巾起事，眾至數十萬，事敗病死。'},
+  diaochan:{n:'貂蟬', z:'',     g:'qun', r:7,  life:'',       ttl:'', note:'演義人物。王允連環計中之關鍵，離間董卓呂布。'},
+  wangyun: {n:'王允', z:'子師', g:'qun', r:7,  life:'137–192', ttl:'司徒', note:'設連環計誅董卓。後不肯赦涼州兵，為李傕郭汜所殺。'},
+  chengong:{n:'陳宮', z:'公臺', g:'qun', r:7,  life:'?–199',  ttl:'', note:'棄曹操而從呂布。下邳城破，請死不降。'},
+
+  /* ── 其他 ── */
+  huatuo:  {n:'華佗', z:'元化', g:'qun', r:7,  life:'?–208',  ttl:'', note:'麻沸散、五禽戲。為曹操治頭風，欲開顱見疑，死於獄中。'}
+};
+
+/* ══════════════════════════════════════════
+   二、關係邊
+   t: kin 君臣 / blood 血親 / marr 姻親 / oath 結義 / foe 敵對 / friend 師友
+   ══════════════════════════════════════════ */
+const E = [
+  /* 曹魏內部 */
+  ['caocao','caopi','blood','父子'], ['caocao','caozhi','blood','父子'],
+  ['caopi','caozhi','blood','兄弟'], ['caocao','xiahoudun','blood','族兄弟'],
+  ['caocao','xiahouyuan','blood','族兄弟'], ['xiahoudun','xiahouyuan','blood','族兄弟'],
+  ['caocao','xunyu','kin','君臣'], ['caocao','guojia','kin','君臣'],
+  ['caocao','zhangliao','kin','君臣'], ['caocao','xuhuang','kin','君臣'],
+  ['caocao','dianwei','kin','君臣'], ['caocao','xuchu','kin','君臣'],
+  ['caocao','yangxiu','kin','主簿'], ['caocao','simayi','kin','君臣'],
+  ['caopi','simayi','kin','託孤'], ['caocao','huatuo','foe','疑殺'],
+  ['xunyu','guojia','friend','同僚'], ['guojia','simayi','friend','同僚'],
+  ['zhangliao','xuhuang','friend','同僚'], ['dianwei','xuchu','friend','同僚'],
+
+  /* 司馬氏 */
+  ['simayi','simashi','blood','父子'], ['simayi','simazhao','blood','父子'],
+  ['simashi','simazhao','blood','兄弟'], ['simazhao','simayan','blood','父子'],
+  ['simayi','caocao','foe','受疑'],
+
+  /* 蜀漢 */
+  ['liubei','guanyu','oath','桃園結義'], ['liubei','zhangfei','oath','桃園結義'],
+  ['guanyu','zhangfei','oath','桃園結義'],
+  ['liubei','zhugeliang','kin','三顧茅廬'], ['zhugeliang','pangtong','friend','臥龍鳳雛'],
+  ['liubei','pangtong','kin','君臣'], ['liubei','fazheng','kin','君臣'],
+  ['liubei','zhaoyun','kin','君臣'], ['liubei','machao','kin','君臣'],
+  ['liubei','huangzhong','kin','君臣'], ['liubei','weiyan','kin','君臣'],
+  ['liubei','liushan','blood','父子'], ['guanyu','guanping','blood','父子'],
+  ['zhangfei','zhangbao','blood','父子'], ['liushan','zhugeliang','kin','相父'],
+  ['zhugeliang','jiangwei','friend','師徒'], ['zhugeliang','weiyan','foe','不和'],
+  ['machao','mateng','blood','父子'], ['liubei','mateng','friend','同為漢臣'],
+
+  /* 孫吳 */
+  ['sunjian','sunce','blood','父子'], ['sunjian','sunquan','blood','父子'],
+  ['sunce','sunquan','blood','兄弟'], ['sunce','zhouyu','friend','總角之交'],
+  ['sunce','daqiao','marr','夫妻'], ['zhouyu','xiaoqiao','marr','夫妻'],
+  ['sunquan','zhouyu','kin','君臣'], ['sunquan','lusu','kin','君臣'],
+  ['sunquan','lvmeng','kin','君臣'], ['sunquan','luxun','kin','君臣'],
+  ['sunquan','ganning','kin','君臣'], ['sunquan','taishici','kin','君臣'],
+  ['zhouyu','lusu','friend','薦舉'], ['lusu','lvmeng','friend','代領其兵'],
+  ['lvmeng','luxun','friend','襲荊州'],
+
+  /* 群雄 */
+  ['yuanshao','yuanshu','blood','兄弟'], ['yuanshao','gongsunzan','foe','界橋之戰'],
+  ['yuanshao','caocao','foe','官渡之戰'], ['yuanshu','lvbu','friend','聯姻未成'],
+  ['dongzhuo','lvbu','oath','義父子'], ['dongzhuo','wangyun','foe','連環計'],
+  ['wangyun','diaochan','blood','義父女'], ['diaochan','lvbu','marr','戀慕'],
+  ['diaochan','dongzhuo','marr','賜婚'], ['lvbu','chengong','kin','君臣'],
+  ['lvbu','caocao','foe','白門樓'], ['lvbu','liubei','foe','奪徐州'],
+  ['chengong','caocao','foe','叛曹'],
+  ['liubiao','liubei','friend','同宗相投'], ['liubiao','sunquan','foe','江夏之仇'],
+  ['sunce','sunjian','kin','繼志'], ['sunquan','liubei','marr','孫夫人'],
+  ['sunquan','liubei','foe','夷陵之戰'], ['sunshangxiang','liubei','marr','夫妻'],
+  ['sunshangxiang','sunquan','blood','兄妹'],
+  ['liuzhang','liubei','foe','益州之爭'], ['liuzhang','zhangjiao','foe','討黃巾'],
+  ['zhangjiao','liubei','foe','黃巾之亂'],
+  ['caocao','yuanshao','friend','少時同遊'], ['caocao','liubei','foe','煮酒論英雄'],
+  ['caocao','lvbu','foe','下邳之圍'], ['caocao','zhangjiao','foe','討黃巾'],
+  ['caocao','dongzhuo','foe','討董卓'], ['caocao','sunquan','foe','赤壁之戰'],
+  ['caocao','liubiao','foe','荊州之役'], ['mateng','caocao','foe','西涼之怨'],
+  ['gongsunzan','liubei','friend','同窗'],
+
+  /* 跨陣營 */
+  ['zhugeliang','zhugeliang','friend',''], // placeholder removed below
+];
+
+/* 修正：諸葛亮兄弟需另立人物 */
+P.zhugejin = {n:'諸葛瑾', z:'子瑜', g:'wu', r:8, life:'174–241', ttl:'大將軍', note:'諸葛亮之兄，仕吳。孫權稱「孤與子瑜有死生不易之誓」。'};
+P.zhugedan = {n:'諸葛誕', z:'公休', g:'wei', r:7, life:'?–258', ttl:'征東大將軍', note:'諸葛亮族弟，仕魏。起兵壽春討司馬昭，兵敗被殺。'};
+E.pop();
+E.push(['zhugeliang','zhugejin','blood','兄弟']);
+E.push(['zhugeliang','zhugedan','blood','族兄弟']);
+E.push(['zhugejin','sunquan','kin','君臣']);
+E.push(['zhugedan','simazhao','foe','壽春之叛']);
+
+/* ══════════════════════════════════════════
+   三、年表
+   ══════════════════════════════════════════ */
+const TL = [
+  [184,'中平元年','war','黃巾之亂','張角以「蒼天已死，黃天當立」起事，三十六方同日並舉，眾數十萬。盧植、皇甫嵩、朱儁分道討之。劉備率關羽、張飛從校尉鄒靖討賊，三人自此相隨。'],
+  [188,'中平五年','pol','州牧之制','劉焉建言改刺史為州牧，總攬軍政。此制使地方坐大，群雄割據之局自此成形。'],
+  [189,'中平六年','pol','董卓入洛','靈帝崩，何進召外兵誅宦官，反為所害。董卓率涼州兵入洛陽，廢少帝、立陳留王（獻帝），專斷朝政。'],
+  [190,'初平元年','war','關東聯軍','袁紹、曹操等十餘路諸侯起兵討董卓，會於酸棗。董卓焚洛陽，挾獻帝西遷長安。聯軍各懷異心，未戰先散。'],
+  [191,'初平二年','war','界橋之戰','袁紹與公孫瓚爭冀州，麴義以八百先登破白馬義從。公孫瓚退保幽州，袁紹遂有河北之基。'],
+  [192,'初平三年','pol','連環計誅董卓','王允使貂蟬離間董卓、呂布。呂布於未央宮北掖門刺殺董卓，暴屍於市。旋李傕、郭汜反攻長安，王允死。'],
+  [193,'初平四年','war','曹操征徐州','曹操為報父仇東征陶謙，屠城數縣。劉備以平原相救徐州，陶謙讓徐州於劉備。'],
+  [194,'興平元年','war','呂布襲兗州','陳宮迎呂布入兗州，曹操僅存鄄城、范、東阿三城。曹操回軍，與呂布相持百餘日，蝗災大起，各引兵去。'],
+  [195,'興平二年','pol','孫策渡江','孫策以傳國璽質於袁術，借兵千人渡江，擊劉繇、王朗，數年間盡有江東。'],
+  [196,'建安元年','pol','迎帝都許','曹操納荀彧「奉主上以從民望」之策，迎獻帝於許，行屯田，自此挾天子以令諸侯。'],
+  [197,'建安二年','pol','袁術僭號','袁術以讖文自命，於壽春稱帝，國號仲家。諸侯共討之，眾叛親離。'],
+  [198,'建安三年','war','下邳之圍','曹操引沂、泗水灌下邳，呂布部將叛降。呂布、陳宮被擒，縊於白門樓。'],
+  [199,'建安四年','pol','易京之亡','袁紹圍易京，公孫瓚焚樓自盡，幽州盡歸袁紹。袁術病死於壽春道上。'],
+  [200,'建安五年','war','官渡之戰','袁紹十萬南下，曹操兵不滿萬。許攸夜奔，獻焚烏巢之計。紹軍潰，曹操坑降卒七萬。此戰定北方之歸屬。'],
+  [200,'建安五年','per','孫策遇刺','孫策獵於丹徒，為許貢門客所傷，創重而卒，年二十六。弟孫權繼位，張昭、周瑜輔之。'],
+  [202,'建安七年','per','袁紹病卒','袁紹嘔血而死。袁譚、袁尚兄弟相攻，河北自亂。'],
+  [207,'建安十二年','war','白狼山之戰','曹操用郭嘉之策，輕兵出盧龍塞，大破烏桓於白狼山，斬蹋頓。郭嘉道卒，年三十八。'],
+  [207,'建安十二年','idea','三顧茅廬','劉備屯新野，三訪隆中。諸葛亮陳「隆中對」：跨有荊益，西和諸戎，南撫夷越，外結孫權，待時北伐。'],
+  [208,'建安十三年','war','赤壁之戰','曹操南下，劉琮降，劉備敗走當陽。孫劉聯軍五萬拒於赤壁，黃蓋詐降火攻，曹軍舟艦焚燒，北還。三分之勢自此始。'],
+  [211,'建安十六年','war','潼關之戰','曹操西征馬超、韓遂。馬超據潼關，曹操以離間計破之，超奔漢中。關中遂定。'],
+  [214,'建安十九年','war','劉備取益州','劉璋迎劉備入蜀拒張魯，劉備反戈。圍成都，劉璋出降。劉備自領益州牧，三分之基乃固。'],
+  [215,'建安二十年','war','逍遙津之戰','孫權十萬攻合肥，張遼以八百壯士突陣，幾獲孫權。江東震懾，張遼之名止小兒夜啼。'],
+  [216,'建安二十一年','pol','曹操進爵魏王','曹操受魏王，設天子旌旗。名義上仍為漢臣，實已備帝王之制。'],
+  [219,'建安二十四年','war','關羽北伐','關羽圍樊城，水淹七軍，擒于禁、斬龐德，威震華夏。曹操議遷都以避其鋒。'],
+  [219,'建安二十四年','war','敗走麥城','呂蒙白衣渡江襲荊州，糜芳、士仁降。關羽退守麥城，突圍至臨沮被擒，與子關平俱死。'],
+  [220,'建安二十五年','pol','曹丕代漢','曹操卒於洛陽。曹丕嗣魏王，逼獻帝禪位，改元黃初，漢四百餘年而亡。'],
+  [221,'章武元年','pol','劉備稱帝','劉備即位於成都，國號漢，以諸葛亮為丞相。同年張飛為部將所害。'],
+  [222,'章武二年','war','夷陵之戰','劉備親征孫吳，連營七百里。陸遜堅守不戰，待暑熱以火攻，破四十餘營。劉備退保白帝城。'],
+  [223,'章武三年','per','白帝託孤','劉備崩於永安宮，託孤於諸葛亮：「若嗣子可輔，輔之；如其不才，君可自取。」劉禪繼位。'],
+  [225,'建興三年','war','南征平蠻','諸葛亮南征，七擒孟獲，攻心為上。南中平，得其金銀耕牛以充軍資。'],
+  [228,'建興六年','war','街亭之敗','諸葛亮首次北伐，天水、南安、安定三郡響應。馬謖違令失街亭，亮退軍，揮淚斬謖，自貶三等。'],
+  [229,'黃龍元年','pol','孫權稱帝','孫權即帝位於武昌，後遷建業。三國鼎立之局於名分上正式確立。'],
+  [234,'建興十二年','per','五丈原','諸葛亮第五次北伐，屯五丈原，與司馬懿相持百餘日。積勞成疾，卒於軍中，年五十四。'],
+  [238,'景初二年','war','司馬懿平遼東','公孫淵據遼東自立為燕王。司馬懿圍襄平，破城斬淵，遼東四郡入魏。'],
+  [249,'正始十年','pol','高平陵之變','司馬懿趁曹爽陪帝謁陵，閉洛陽城門，指爽背誓。曹爽族誅，魏之軍政盡歸司馬氏。'],
+  [252,'嘉禾末','per','孫權崩','孫權卒，年七十一，在位五十二年。此後吳室屢生內亂。'],
+  [258,'甘露三年','pol','司馬昭弒君','魏帝曹髦不甘為傀儡，率僮僕討司馬昭，為賈充唆使成濟所弒。'],
+  [263,'景元四年','war','魏滅蜀','司馬昭三路伐蜀。鄧艾偷渡陰平，直取成都，劉禪出降。姜維詐降鍾會，事敗自刎。'],
+  [265,'泰始元年','pol','司馬炎代魏','司馬炎受魏禪，改國號晉。魏歷五帝四十六年而亡。'],
+  [280,'太康元年','war','晉滅吳','王濬樓船自益州順流而下，鐵鎖沉江。孫皓出降，吳亡。自黃巾之亂九十六年，天下復歸一統。']
+];
+
+/* ══════════════════════════════════════════
+   四、力導向佈局
+   ══════════════════════════════════════════ */
+const CLUSTER = { wei:[600,268], shu:[372,470], wu:[720,520], qun:[520,132], sima:[748,205] };
+const GC = { wei:'#6d92b6', shu:'#7d9f6d', wu:'#bd8474', qun:'#b09a6a', sima:'#8d7fa8' };
+
+const IDS = Object.keys(P);
+const idx = {}; IDS.forEach((id,i)=> idx[id] = i);
+const N = IDS.length;
+const px = new Float64Array(N), py = new Float64Array(N);
+
+/* 以固定種子做確定性初始擺位 */
+let seed = 20260819;
+function rnd(){ seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
+IDS.forEach((id,i)=>{
+  const c = CLUSTER[P[id].g] || CLUSTER.qun;
+  px[i] = c[0] + (rnd() - .5) * 190;
+  py[i] = c[1] + (rnd() - .5) * 150;
+});
+
+const LINKS = E.filter(e=> P[e[0]] && P[e[1]]).map(e=>({a:idx[e[0]], b:idx[e[1]], t:e[2], l:e[3]||''}));
+
+/* 鄰接表 */
+const ADJ = IDS.map(()=> []);
+LINKS.forEach(k=>{ ADJ[k.a].push(k.b); ADJ[k.b].push(k.a); });
+
+function layout(){
+  const ITER = 620;
+  for (let it = 0; it < ITER; it++){
+    const cool = 1 - it / ITER;
+    const fx = new Float64Array(N), fy = new Float64Array(N);
+
+    /* 斥力 */
+    for (let i = 0; i < N; i++){
+      for (let j = i + 1; j < N; j++){
+        let dx = px[i] - px[j], dy = py[i] - py[j];
+        let d2 = dx*dx + dy*dy;
+        if (d2 < 1) { dx = (rnd()-.5); dy = (rnd()-.5); d2 = dx*dx + dy*dy + .01; }
+        const d = Math.sqrt(d2);
+        const rep = 9200 / d2;
+        const ux = dx/d, uy = dy/d;
+        fx[i] += ux*rep; fy[i] += uy*rep;
+        fx[j] -= ux*rep; fy[j] -= uy*rep;
+      }
+    }
+    /* 彈簧 */
+    LINKS.forEach(k=>{
+      const dx = px[k.b]-px[k.a], dy = py[k.b]-py[k.a];
+      const d = Math.sqrt(dx*dx+dy*dy) || .01;
+      const rest = k.t === 'kin' ? 112 : k.t === 'blood' ? 70 : k.t === 'foe' ? 170 : 98;
+      const f = (d - rest) * .032;
+      const ux = dx/d, uy = dy/d;
+      fx[k.a] += ux*f; fy[k.a] += uy*f;
+      fx[k.b] -= ux*f; fy[k.b] -= uy*f;
+    });
+    /* 群聚重力 */
+    for (let i = 0; i < N; i++){
+      const c = CLUSTER[P[IDS[i]].g] || CLUSTER.qun;
+      fx[i] += (c[0]-px[i]) * .0058;
+      fy[i] += (c[1]-py[i]) * .0058;
+      /* 邊界 */
+      fx[i] += Math.max(0, 72 - px[i]) * .34 - Math.max(0, px[i] - 936) * .34;
+      fy[i] += Math.max(0, 52 - py[i]) * .34 - Math.max(0, py[i] - 730) * .34;
+    }
+    const k = 0.55 * (0.35 + cool * 0.65);
+    for (let i = 0; i < N; i++){
+      const m = Math.hypot(fx[i], fy[i]) || 1;
+      const lim = Math.min(m, 9);
+      px[i] += fx[i]/m * lim * k;
+      py[i] += fy[i]/m * lim * k;
+    }
+  }
+}
+layout();
+
+/* 標籤避讓：輕微推開過近的節點，避免字疊 */
+for (let pass = 0; pass < 90; pass++){
+  for (let i = 0; i < N; i++){
+    for (let j = i+1; j < N; j++){
+      const dx = px[j]-px[i], dy = py[j]-py[i];
+      const d = Math.hypot(dx,dy) || .01;
+      const need = (P[IDS[i]].r + P[IDS[j]].r) + 30;
+      if (d < need){
+        const push = (need - d) / 2 * .62;
+        const ux = dx/d, uy = dy/d;
+        px[i] -= ux*push; py[i] -= uy*push;
+        px[j] += ux*push; py[j] += uy*push;
+      }
+    }
+  }
+}
+
+/* ══════════════════════════════════════════
+   五、繪製
+   ══════════════════════════════════════════ */
+const svg = document.getElementById('graph');
+let selected = null, hovered = null;
+
+function buildGraph(){
+  let s = '<defs>' +
+    '<filter id="soft" x="-30%" y="-30%" width="160%" height="160%">' +
+    '<feDropShadow dx="0" dy="1.2" stdDeviation="1.6" flood-color="#6b5a3e" flood-opacity=".22"/>' +
+    '</filter></defs>';
+
+  /* 群組底色暈染 */
+  const boxes = {};
+  IDS.forEach((id,i)=>{
+    const g = P[id].g;
+    if (!boxes[g]) boxes[g] = {x:0,y:0,n:0};
+    boxes[g].x += px[i]; boxes[g].y += py[i]; boxes[g].n++;
+  });
+  Object.keys(boxes).forEach(g=>{
+    const b = boxes[g];
+    const cx = b.x/b.n, cy = b.y/b.n;
+    let rr = 0;
+    IDS.forEach((id,i)=>{ if (P[id].g === g) rr = Math.max(rr, Math.hypot(px[i]-cx, py[i]-cy)); });
+    s += '<circle class="blob" cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+(rr+22).toFixed(1)+
+         '" fill="'+GC[g]+'" opacity=".038"/>';
+  });
+
+  /* 邊 */
+  LINKS.forEach((k,n)=>{
+    const x1 = px[k.a], y1 = py[k.a], x2 = px[k.b], y2 = py[k.b];
+    const mx = (x1+x2)/2, my = (y1+y2)/2;
+    const dx = x2-x1, dy = y2-y1;
+    const bow = k.t === 'foe' ? .13 : .06;
+    const cx = mx - dy*bow, cy = my + dx*bow;
+    s += '<path class="link '+k.t+'" data-a="'+IDS[k.a]+'" data-b="'+IDS[k.b]+'" d="M'+
+         x1.toFixed(1)+','+y1.toFixed(1)+' Q'+cx.toFixed(1)+','+cy.toFixed(1)+' '+
+         x2.toFixed(1)+','+y2.toFixed(1)+'"/>';
+  });
+
+  /* 節點 */
+  IDS.forEach((id,i)=>{
+    const p = P[id];
+    s += '<g class="node" data-id="'+id+'" transform="translate('+px[i].toFixed(1)+','+py[i].toFixed(1)+')">';
+    s += '<circle r="'+p.r+'" fill="'+GC[p.g]+'" filter="url(#soft)"/>';
+    s += '<text y="'+(p.r + 12)+'">'+p.n+'</text>';
+    s += '</g>';
+  });
+
+  svg.innerHTML = s;
+  fitView();
+  applyFocus();
+}
+
+/* 視圖自動貼合內容 */
+function fitView(){
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  IDS.forEach((id,i)=>{
+    x0 = Math.min(x0, px[i]); x1 = Math.max(x1, px[i]);
+    y0 = Math.min(y0, py[i]); y1 = Math.max(y1, py[i]);
+  });
+  const pad = 52;
+  x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
+  const r = svg.getBoundingClientRect();
+  const aspect = (r.width && r.height) ? r.width / r.height : 1.28;
+  let w = x1 - x0, h = y1 - y0;
+  if (w / h < aspect) w = h * aspect; else h = w / aspect;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  svg.setAttribute('viewBox',
+    (cx - w/2).toFixed(1) + ' ' + (cy - h/2).toFixed(1) + ' ' + w.toFixed(1) + ' ' + h.toFixed(1));
+}
+
+function applyFocus(){
+  const active = hovered || selected;
+  const near = {};
+  if (active){
+    near[active] = 1;
+    ADJ[idx[active]].forEach(j=> near[IDS[j]] = 1);
+  }
+  svg.querySelectorAll('.node').forEach(el=>{
+    const id = el.getAttribute('data-id');
+    el.classList.toggle('dim', !!active && !near[id]);
+    el.classList.toggle('hi', !!active && !!near[id] && id !== active);
+    el.classList.toggle('sel', id === selected);
+  });
+  svg.querySelectorAll('.link').forEach(el=>{
+    const a = el.getAttribute('data-a'), b = el.getAttribute('data-b');
+    const on = !active || a === active || b === active;
+    el.classList.toggle('dim', !on);
+  });
+  svg.querySelectorAll('.blob').forEach(el=>{
+    el.style.opacity = active ? '.015' : '.038';
+  });
+}
+
+/* ══════════════════════════════════════════
+   六、側欄
+   ══════════════════════════════════════════ */
+const RELNAME = { kin:'君臣', blood:'血親', marr:'姻親', oath:'結義', foe:'敵對', friend:'師友' };
+const GNAME = { wei:'曹魏', shu:'蜀漢', wu:'孫吳', qun:'群雄', sima:'司馬氏' };
+
+function renderSide(id){
+  const head = document.getElementById('sideHead');
+  const body = document.getElementById('sideBody');
+  if (!id){
+    head.innerHTML = '<div class="side-name">三國人物圖</div>' +
+      '<div class="side-meta">共 '+N+' 人　'+LINKS.length+' 條關係</div>' +
+      '<div class="side-note">此圖以人物為節點、以血親、君臣、姻親、結義、敵對為邊，勾勒漢末三國的人際網絡。' +
+      '滑鼠移到任一人物可高亮其關係；點擊可讀其字號、生卒與事略。</div>';
+    body.innerHTML = '<div class="empty">左側為關係網絡，右側將顯示所選人物。<br><br>' +
+      '節點大小約略反映其歷史份量；顏色代表所屬陣營：<br>' +
+      '<span style="color:#6d92b6">■ 曹魏</span>　<span style="color:#7d9f6d">■ 蜀漢</span>　' +
+      '<span style="color:#bd8474">■ 孫吳</span><br>' +
+      '<span style="color:#b09a6a">■ 群雄</span>　<span style="color:#8d7fa8">■ 司馬氏</span></div>';
+    return;
+  }
+  const p = P[id];
+  head.innerHTML = '<div class="side-name">'+p.n+'<em>'+(p.z ? '字 '+p.z : '')+'</em></div>' +
+    '<div class="side-meta">'+(p.ttl || '—')+'　·　'+GNAME[p.g]+'<br>'+(p.life ? p.life : '生卒不詳')+'</div>' +
+    '<div class="side-note">'+p.note+'</div>';
+
+  /* 依關係分組 */
+  const groups = {};
+  LINKS.forEach(k=>{
+    const a = IDS[k.a], b = IDS[k.b];
+    if (a !== id && b !== id) return;
+    const other = a === id ? b : a;
+    (groups[k.t] = groups[k.t] || []).push({o: other, l: k.l});
+  });
+  let h = '';
+  const order = ['blood','oath','marr','kin','friend','foe'];
+  order.forEach(t=>{
+    if (!groups[t]) return;
+    h += '<div class="relgroup"><h4>'+RELNAME[t]+'</h4>';
+    groups[t].forEach(x=>{
+      h += '<div class="relrow" data-goto="'+x.o+'"><span class="rn">'+P[x.o].n+'</span>' +
+           '<span class="rt">'+(x.l || '')+'</span></div>';
+    });
+    h += '</div>';
+  });
+  if (!h) h = '<div class="empty">此人物在本圖中尚無連結。</div>';
+  body.innerHTML = h;
+}
+
+/* ══════════════════════════════════════════
+   七、互動
+   ══════════════════════════════════════════ */
+svg.addEventListener('mousemove', function(e){
+  const n = e.target.closest('.node');
+  const id = n ? n.getAttribute('data-id') : null;
+  if (id !== hovered){ hovered = id; applyFocus(); }
+});
+
+svg.addEventListener('click', function(e){
+  const n = e.target.closest('.node');
+  if (n){
+    selected = n.getAttribute('data-id');
+    renderSide(selected);
+    applyFocus();
+    return;
+  }
+  if (!e.target.closest('.link')){ selected = null; renderSide(null); applyFocus(); }
+});
+
+/* 拖曳平移 */
+let dragging = false, sx0 = 0, sy0 = 0, vb = {x:0,y:0,w:1000,h:780};
+svg.addEventListener('mousedown', function(e){
+  if (e.target.closest('.node')) return;
+  dragging = true; svg.classList.add('drag');
+  const r = svg.getBoundingClientRect();
+  sx0 = e.clientX; sy0 = e.clientY;
+  const cur = svg.getAttribute('viewBox').split(/[ ,]+/).map(Number);
+  vb = {x:cur[0], y:cur[1], w:cur[2], h:cur[3]};
+  svg.dataset.rw = r.width; svg.dataset.rh = r.height;
+});
+window.addEventListener('mousemove', function(e){
+  if (!dragging) return;
+  const rw = Number(svg.dataset.rw) || 1, rh = Number(svg.dataset.rh) || 1;
+  const dx = (e.clientX - sx0) * vb.w / rw;
+  const dy = (e.clientY - sy0) * vb.h / rh;
+  svg.setAttribute('viewBox', (vb.x - dx)+' '+(vb.y - dy)+' '+vb.w+' '+vb.h);
+});
+window.addEventListener('mouseup', ()=>{ dragging = false; svg.classList.remove('drag'); });
+svg.addEventListener('wheel', function(e){
+  e.preventDefault();
+  const cur = svg.getAttribute('viewBox').split(/[ ,]+/).map(Number);
+  const k = e.deltaY > 0 ? 1.1 : 0.9;
+  const w = Math.min(2400, Math.max(340, cur[2]*k));
+  const h = w * 0.78;
+  const cx = cur[0] + cur[2]/2, cy = cur[1] + cur[3]/2;
+  svg.setAttribute('viewBox', (cx-w/2)+' '+(cy-h/2)+' '+w+' '+h);
+}, {passive:false});
+
+document.addEventListener('click', function(e){
+  const g = e.target.closest('[data-goto]');
+  if (g){
+    selected = g.getAttribute('data-goto');
+    renderSide(selected); applyFocus();
+  }
+});
+
+/* ══════════════════════════════════════════
+   八、年表
+   ══════════════════════════════════════════ */
+const CAT = { war:'戰爭', pol:'政治', per:'人物', idea:'計謀' };
+
+function buildTimeline(){
+  const box = document.getElementById('timeline');
+  let h = '<div class="tl-inner">';
+  let lastYear = null;
+  TL.forEach(ev=>{
+    const [y, era, cat, title, desc] = ev;
+    if (y !== lastYear){
+      if (lastYear !== null) h += '</div>';
+      h += '<div class="tl-year"><div class="yr">'+y+'<small>'+era+'</small></div><div class="dot"></div>';
+      lastYear = y;
+    }
+    h += '<div class="ev" data-cat="'+cat+'"><div class="et"><span class="tag '+cat+'">'+CAT[cat]+'</span>'+title+'</div>' +
+         '<div class="ed">'+desc+'</div></div>';
+  });
+  h += '</div></div>';
+  box.innerHTML = h;
+}
+buildTimeline();
+
+/* ══════════════════════════════════════════
+   九、分頁與篩選
+   ══════════════════════════════════════════ */
+document.addEventListener('click', function(e){
+  const tab = e.target.closest('.tab');
+  if (tab){
+    const v = tab.getAttribute('data-view');
+    document.querySelectorAll('.tab').forEach(t=> t.classList.toggle('on', t === tab));
+    document.querySelectorAll('.view').forEach(x=> x.classList.toggle('on', x.id === 'view-' + v));
+    document.getElementById('filters').style.display = v === 'time' ? 'flex' : 'none';
+    document.getElementById('hint').textContent = v === 'time'
+      ? '滾動瀏覽　·　可用右上分類篩選'
+      : '點擊人物看事略　·　滾輪縮放　·　拖曳平移';
+    return;
+  }
+  const fb = e.target.closest('.fbtn');
+  if (fb){
+    const c = fb.getAttribute('data-cat');
+    document.querySelectorAll('.fbtn').forEach(b=> b.classList.toggle('on', b === fb));
+    document.querySelectorAll('.ev').forEach(ev=>{
+      ev.classList.toggle('hide', c !== 'all' && ev.getAttribute('data-cat') !== c);
+    });
+    document.querySelectorAll('.tl-year').forEach(yr=>{
+      const any = Array.from(yr.querySelectorAll('.ev')).some(ev=> !ev.classList.contains('hide'));
+      yr.style.display = any ? '' : 'none';
+    });
+  }
+});
+
+/* 啟動 */
+buildGraph();
+renderSide(null);
+
+/* 深連結：?v=time 直接開啟年表；?p=guanyu 直接選中某人 */
+const _v = new URLSearchParams(location.search).get('v');
+if (_v === 'time') document.querySelector('.tab[data-view="time"]').click();
+const _p = new URLSearchParams(location.search).get('p');
+if (_p && P[_p]) { selected = _p; renderSide(_p); applyFocus(); }
+})();
+</script>
+</body>
+</html>

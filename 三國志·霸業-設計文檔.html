@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>三國志 · 霸業 — 遊戲設計文檔</title>
+<style>
+:root{
+  --paper:#f6f0e2; --paper-2:#efe6d2; --paper-3:#e6dabf;
+  --ink:#28221b; --ink-2:#574e42; --ink-3:#8a7e6a;
+  --line:#d3c4a5; --line-2:#e2d7bd;
+  --accent:#9e2f2a; --gold:#a8802a; --green:#2f6b47; --blue:#2f6fb3;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:"Songti TC","Songti SC","STSong","SimSun","Noto Serif TC",serif;
+  background:var(--paper); color:var(--ink);
+  font-size:15px; line-height:1.95;
+  background-image:radial-gradient(circle at 15% 5%, #fffaef 0%, transparent 40%),
+                   radial-gradient(circle at 88% 92%, #f0e6d0 0%, transparent 45%);
+  background-attachment:fixed;
+  padding:56px 24px 100px;
+}
+.wrap{max-width:840px;margin:0 auto}
+
+/* 封面 */
+.cover{text-align:center;padding-bottom:44px;border-bottom:2px solid var(--line);margin-bottom:44px}
+.cover h1{font-size:52px;letter-spacing:16px;font-weight:400;text-indent:16px;line-height:1.2}
+.cover .sub{font-size:13px;letter-spacing:9px;color:var(--ink-3);margin-top:12px;text-indent:9px}
+.cover .meta{margin-top:22px;font-size:12px;color:var(--ink-3);letter-spacing:2px}
+.cover .rule{width:120px;height:1px;background:var(--line);margin:22px auto}
+
+/* 目錄 */
+.toc{background:rgba(255,250,240,.6);border:1px solid var(--line-2);border-radius:4px;
+  padding:20px 26px;margin-bottom:48px}
+.toc h2{font-size:13px;letter-spacing:5px;color:var(--ink-3);font-weight:400;margin-bottom:12px}
+.toc ol{list-style:none;counter-reset:t;columns:2;column-gap:36px}
+.toc li{counter-increment:t;font-size:13.5px;line-height:2.1;color:var(--ink-2);
+  break-inside:avoid}
+.toc li::before{content:counter(t,decimal-leading-zero) "　";color:var(--gold);font-size:11px}
+
+/* 章節 */
+section{margin-bottom:52px;scroll-margin-top:20px}
+h2.sec{font-size:23px;font-weight:400;letter-spacing:4px;padding-bottom:11px;
+  border-bottom:1px solid var(--line);margin-bottom:22px;position:relative}
+h2.sec .num{font-size:12px;color:var(--gold);letter-spacing:2px;margin-right:12px;
+  vertical-align:middle;font-family:Georgia,serif}
+h3.sub{font-size:16px;letter-spacing:2px;color:var(--accent);margin:26px 0 10px;font-weight:600}
+h4{font-size:14px;letter-spacing:1px;margin:18px 0 7px;color:var(--ink)}
+p{margin-bottom:12px;color:var(--ink-2)}
+p strong,b{color:var(--ink);font-weight:600}
+em{font-style:normal;color:var(--accent);font-weight:600}
+ul,ol{margin:0 0 14px 22px;color:var(--ink-2)}
+li{margin-bottom:6px}
+code{font-family:Consolas,"Courier New",monospace;font-size:13px;
+  background:rgba(211,196,165,.35);padding:1px 6px;border-radius:2px;color:#6b4a2a}
+
+/* 表格 */
+table{width:100%;border-collapse:collapse;margin:14px 0 18px;font-size:13.5px;
+  background:rgba(255,250,240,.5)}
+th{background:rgba(211,196,165,.42);color:var(--ink);font-weight:600;letter-spacing:1px;
+  text-align:left;padding:8px 11px;border:1px solid var(--line-2);font-size:12.5px}
+td{padding:7px 11px;border:1px solid var(--line-2);color:var(--ink-2)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr:hover td{background:rgba(255,252,244,.7)}
+
+/* 卡片 / 標註 */
+.box{background:rgba(255,250,240,.66);border:1px solid var(--line-2);border-left:3px solid var(--gold);
+  border-radius:3px;padding:14px 18px;margin:16px 0;font-size:13.5px;line-height:1.9}
+.box .bt{font-size:12px;letter-spacing:3px;color:var(--gold);margin-bottom:6px}
+.box.accent{border-left-color:var(--accent)}
+.box.accent .bt{color:var(--accent)}
+.box p:last-child{margin-bottom:0}
+
+.pill{display:inline-block;font-size:11.5px;padding:1px 9px;border-radius:10px;
+  border:1px solid currentColor;letter-spacing:1px;margin-right:5px}
+.g{color:var(--green)} .r{color:var(--accent)} .b{color:var(--blue)} .y{color:var(--gold)}
+
+/* 公式 */
+.formula{background:rgba(230,218,191,.5);border:1px dashed var(--line);border-radius:3px;
+  padding:12px 16px;margin:12px 0;font-family:Consolas,"Courier New",monospace;
+  font-size:13px;line-height:2;color:#4a3f2e;overflow-x:auto;white-space:nowrap}
+
+/* 循環圖 */
+.loop{width:100%;margin:18px 0 22px}
+
+/* 武將表 */
+.small{font-size:12.5px}
+
+@media print{
+  body{padding:0;background:#fff}
+  section{page-break-inside:avoid}
+}
+@media (max-width:700px){
+  body{padding:32px 16px 60px;font-size:14px}
+  .cover h1{font-size:36px;letter-spacing:10px}
+  .toc ol{columns:1}
+  table{font-size:12px}
+  th,td{padding:5px 7px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="cover">
+  <h1>三國志</h1>
+  <div class="sub">霸 業</div>
+  <div class="rule"></div>
+  <div class="meta">遊戲設計文檔　v0.1　·　回合制大戰略　·　單機</div>
+  <div class="meta" style="margin-top:6px">附可執行原型 <code>三國志·霸業.html</code></div>
+</div>
+
+<div class="toc">
+  <h2>目　錄</h2>
+  <ol>
+    <li>遊戲概覽</li>
+    <li>設計支柱</li>
+    <li>核心循環</li>
+    <li>世界結構</li>
+    <li>勢力與武將</li>
+    <li>資源與經濟</li>
+    <li>內政與軍事指令</li>
+    <li>戰鬥系統</li>
+    <li>外交系統</li>
+    <li>事件系統</li>
+    <li>AI 設計</li>
+    <li>節奏曲線與勝負</li>
+    <li>介面與美術</li>
+    <li>技術架構</li>
+    <li>平衡基線（實測）</li>
+    <li>已知問題與下一步</li>
+  </ol>
+</div>
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+<h2 class="sec"><span class="num">01</span>遊戲概覽</h2>
+
+<p><b>《三國志·霸業》</b>是一款單機回合制大戰略遊戲。玩家擇一諸侯而起，以「季」為單位經營城池、積蓄錢糧、編練兵馬，最終吞併天下二十四城。</p>
+
+<table>
+<tr><th style="width:120px">項目</th><th>設定</th></tr>
+<tr><td>類型</td><td>回合制大戰略（Grand Strategy）／勢力經營</td></tr>
+<tr><td>平台</td><td>Web（桌面瀏覽器優先），單一 HTML 檔可離線執行</td></tr>
+<tr><td>難度</td><td>三種：簡單／普通／困難（改變 AI 積極度、徵兵率、我方收入倍率與同盟上限）</td></tr>
+<tr><td>開局方式</td><td>五諸侯擇一，或自建勢力（國號、君主、代表色、起始城、基底勢力）</td></tr>
+<tr><td>外交</td><td>諸侯關係 + 匈奴／羌／烏桓／山越／南蠻五支外族同盟</td></tr>
+<tr><td>單局時長</td><td>目標 45～75 季（約 12～19 年遊戲內時間），實際 30～90 分鐘</td></tr>
+<tr><td>操作規模</td><td>每季 3～8 次決策，單次決策 5 秒內可完成</td></tr>
+<tr><td>核心張力</td><td>擴張速度 vs 補給線；兵力集中 vs 邊境空虛</td></tr>
+<tr><td>勝利條件</td><td>佔領全部城池，或消滅其餘所有勢力</td></tr>
+<tr><td>失敗條件</td><td>本方城池盡失</td></tr>
+</table>
+
+<p>選擇「季」而非「月」作為回合單位，是因為內政（開墾、興商、築城）在一個月內看不出成果，而一季剛好能容納一次完整的農事週期與一次行軍動員，玩家心理上也能接受「這座城這一季只能做一件事」的限制。</p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+<h2 class="sec"><span class="num">02</span>設計支柱</h2>
+
+<p>所有機制取捨都回到這四條。當某個設計無法服務其中任一條時，砍掉它。</p>
+
+<h3 class="sub">支柱一：決策要有代價，而不是選單</h3>
+<p>每座城每季只有<em>一道內政令</em>與<em>一次軍事行動</em>。這不是為了簡化操作，而是強迫取捨——你要拿這一季去徵兵，還是去開墾？城池的「產出」與「兵源」共用同一個稀缺資源：行動次數。</p>
+
+<h3 class="sub">支柱二：兵力必須集中，分散等於自殺</h3>
+<p>攻城需要守軍 1.5～2 倍的兵力（見第 8 章實測表）。這條數學事實逼玩家把兵從內地調往前線，於是「調兵」成為核心操作，而內地空虛又成為 AI 的可乘之機。整個遊戲的緊張感來自這條補給線。</p>
+
+<h3 class="sub">支柱三：武將決定上限，兵力決定下限</h3>
+<p>統率影響傷害與傷亡，智力決定能否放計略，武力決定單挑。同一批兵交給關羽和交給廖化，結果不同。玩家會為了「把對的人放在對的城」而反覆調整太守任命。</p>
+
+<h3 class="sub">支柱四：資訊透明，勝負可預判</h3>
+<p>出征前必須看到目標守軍、城防、兵力倍數與勝算評語。玩家輸掉一場仗時應該說「我知道會這樣，但我必須打」，而不是「怎麼可能輸」。</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+<h2 class="sec"><span class="num">03</span>核心循環</h2>
+
+<p>一季的完整流程如下。注意「歲入結算」放在玩家行動<em>之後</em>、AI 行動<em>之前</em>——這樣玩家本季花掉的錢不會立刻回補，而 AI 拿到收入後能立刻投入擴軍，讓每個勢力的經濟節奏一致。「行軍推進」在 AI 行動之後、新回合之前結算：在途部隊減少一季倒數，歸零者當季決戰或駐防。</p>
+
+<svg class="loop" viewBox="0 0 780 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#a8802a"/>
+    </marker>
+  </defs>
+  <g font-family="Songti TC, SimSun, serif" font-size="13">
+    <!-- 玩家回合 -->
+    <rect x="20" y="40" width="150" height="58" rx="3" fill="#fffaf0" stroke="#cbb994"/>
+    <text x="95" y="65" text-anchor="middle" fill="#28221b">玩家回合</text>
+    <text x="95" y="84" text-anchor="middle" fill="#8a7e6a" font-size="11">內政 × 軍事</text>
+
+    <rect x="212" y="40" width="150" height="58" rx="3" fill="#fffaf0" stroke="#cbb994"/>
+    <text x="287" y="65" text-anchor="middle" fill="#28221b">結束回合</text>
+    <text x="287" y="84" text-anchor="middle" fill="#8a7e6a" font-size="11">結算歲入</text>
+
+    <rect x="404" y="40" width="150" height="58" rx="3" fill="#fffaf0" stroke="#cbb994"/>
+    <text x="479" y="65" text-anchor="middle" fill="#28221b">隨機事件</text>
+    <text x="479" y="84" text-anchor="middle" fill="#8a7e6a" font-size="11">38% 觸發</text>
+
+    <rect x="596" y="40" width="150" height="58" rx="3" fill="#fffaf0" stroke="#cbb994"/>
+    <text x="671" y="65" text-anchor="middle" fill="#28221b">諸侯行動</text>
+    <text x="671" y="84" text-anchor="middle" fill="#8a7e6a" font-size="11">內政→集結→出征</text>
+
+    <line x1="172" y1="69" x2="206" y2="69" stroke="#a8802a" stroke-width="1.4" marker-end="url(#ar)"/>
+    <line x1="364" y1="69" x2="398" y2="69" stroke="#a8802a" stroke-width="1.4" marker-end="url(#ar)"/>
+    <line x1="556" y1="69" x2="590" y2="69" stroke="#a8802a" stroke-width="1.4" marker-end="url(#ar)"/>
+
+    <!-- 回圈 -->
+    <path d="M671,100 L671,150 Q671,168 653,168 L115,168 Q97,168 97,150 L97,102"
+          fill="none" stroke="#a8802a" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+    <text x="384" y="188" text-anchor="middle" fill="#8a7e6a" font-size="11.5">回合 +1　·　重置全城行動狀態</text>
+
+    <!-- 底部說明 -->
+    <rect x="120" y="216" width="540" height="62" rx="3" fill="#efe6d2" stroke="#dccfb2"/>
+    <text x="390" y="239" text-anchor="middle" fill="#574e42" font-size="12">
+      每城每季：1 道內政令（開發／興商／修城／徵兵／撫民／練兵）
+    </text>
+    <text x="390" y="260" text-anchor="middle" fill="#574e42" font-size="12">
+      ＋ 1 次軍事行動（出征 或 調兵）
+    </text>
+  </g>
+</svg>
+
+<div class="box">
+  <div class="bt">設計取捨</div>
+  <p>刻意<em>不做</em>「行動點（AP）」全域資源。全域 AP 會讓玩家把每個決策換算成同一個數字，決策同質化。改成「每城獨立額度」後，決策與地理位置綁定——前線城和後方城的價值不同，取捨才有質地。</p>
+</div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+<h2 class="sec"><span class="num">04</span>世界結構</h2>
+
+<p>地圖為<b>節點圖</b>而非六角格。理由：本作的核心決策是「打哪座城」而非「怎麼走位」，節點圖能讓玩家在 3 秒內看清全局鄰接關係，也讓 AI 尋路成本趨近於零。二十四座城池依東漢十三州分佈，座標大致對應真實地理。</p>
+
+<h3 class="sub">城池資料結構</h3>
+<div class="formula">city = { id, name, region, x, y, owner, agri, comm, def, loy, troops, governor, acted, moved }</div>
+
+<table class="small">
+<tr><th style="width:76px">屬性</th><th style="width:64px">範圍</th><th>作用</th></tr>
+<tr><td>農業</td><td class="n">0–100</td><td>決定糧產。每點約產 1.5×(0.6+民忠/250) 糧／季</td></tr>
+<tr><td>商業</td><td class="n">0–100</td><td>決定金收。每點約產 2.0×(0.6+民忠/250) 金／季</td></tr>
+<tr><td>城防</td><td class="n">0–100</td><td>降低攻方造成的傷害（係數 <code>1 + def/260</code>）</td></tr>
+<tr><td>民忠</td><td class="n">0–100</td><td>乘算所有產出；低於 35 無法徵兵；被攻克後 -25</td></tr>
+<tr><td>駐軍</td><td class="n">0–30000</td><td>守城與出征的唯一兵源</td></tr>
+</table>
+
+<h3 class="sub">初始版圖</h3>
+<p>二十四城分屬五個勢力與三座無主之城。無主城（徐州、襄陽、長沙）守軍 5000～6000、無守將，是各方早期擴張的緩衝帶，也是玩家練手的目標。</p>
+
+<table class="small">
+<tr><th>勢力</th><th>都城</th><th class="n">城池</th><th class="n">武將</th><th class="n">初始兵力</th><th>難度</th></tr>
+<tr><td><span style="color:#2f6fb3">■</span> 曹操</td><td>許昌</td><td class="n">5</td><td class="n">7</td><td class="n">49,000</td><td><span class="pill g">易</span>中原腹地，武將素質最高</td></tr>
+<tr><td><span style="color:#b23a3a">■</span> 孫權</td><td>建業</td><td class="n">5</td><td class="n">6</td><td class="n">43,000</td><td><span class="pill y">普通</span>江東富庶，水路難攻</td></tr>
+<tr><td><span style="color:#7d5aa6">■</span> 袁紹</td><td>鄴</td><td class="n">4</td><td class="n">6</td><td class="n">34,000</td><td><span class="pill y">普通</span>河北兵多，南面受敵</td></tr>
+<tr><td><span style="color:#2f7d55">■</span> 劉備</td><td>成都</td><td class="n">4</td><td class="n">6</td><td class="n">34,000</td><td><span class="pill r">難</span>益州天險，出川不易</td></tr>
+<tr><td><span style="color:#b8862b">■</span> 馬騰</td><td>西涼</td><td class="n">3</td><td class="n">4</td><td class="n">26,000</td><td><span class="pill r">極難</span>地貧兵少，四面皆敵</td></tr>
+</table>
+
+<h3 class="sub">鄰接圖</h3>
+<p>共 40 條連線。圖的連通性刻意讓<em>益州（成都、漢中、永安）只有三個出口</em>，形成天然要塞；而<em>中原（許昌、陳留、洛陽、宛、汝南）互相高度連通</em>，是四戰之地。這使得「守蜀」與「爭中原」是兩種完全不同的玩法。</p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+<h2 class="sec"><span class="num">05</span>勢力與武將</h2>
+
+<p>共 28 名武將，四項能力值沿用系列傳統：<b>統率</b>（傷害與傷亡）、<b>武力</b>（單挑）、<b>智力</b>（計略）、<b>政治</b>（內政效率）。另加<b>忠誠</b>，目前僅作展示與投降判定，尚未實作挖角。</p>
+
+<h3 class="sub">能力值如何進入公式</h3>
+<table class="small">
+<tr><th style="width:76px">能力</th><th>進入點</th><th>影響幅度</th></tr>
+<tr><td>統率</td><td>戰鬥力 <code>0.55 + 統率/220</code></td><td>統 60 → 0.82；統 97 → 0.99。約 20% 差距</td></tr>
+<tr><td>武力</td><td>單挑 <code>武力 + 隨機 0~22</code></td><td>勝者全軍 +12% 戰力，敗者 -10%</td></tr>
+<tr><td>智力</td><td>計略觸發（需高出對手 8 點）</td><td>成功則開戰前削敵 5%～10% 兵力</td></tr>
+<tr><td>政治</td><td>內政加成 <code>(政治-60)/8</code></td><td>政治 98 → 額外 +4～5 點</td></tr>
+</table>
+
+<div class="box">
+  <div class="bt">為什麼統率只值 20%</div>
+  <p>如果統率差距能讓 8000 打贏 12000，玩家就會停止計算兵力，改為「抽卡找名將」，遊戲從戰略退化成養成。把統率的權重壓在 20% 以內，確保<em>兵力始終是主要變量</em>，名將是放大器而非替代品。智力與單挑則是「驚喜層」，提供戰報的可讀性。</p>
+</div>
+
+<h3 class="sub">武將初始配置</h3>
+<p>君主必為都城太守。其餘武將按資料表順序輪流派駐各城，每城首位武將兼任太守。例如劉備勢力：劉備守成都、關羽守漢中、張飛守永安、趙雲守江陵——這個配置讓玩家一開局就必須面對「關羽被釘在北面漢中」的取捨。</p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+<h2 class="sec"><span class="num">06</span>資源與經濟</h2>
+
+<p>只有兩種資源：<b>金</b>與<b>糧</b>。金管建設與徵兵，糧管養兵。刻意不做第三種資源——每多一種資源，玩家每回合的認知負擔就多一層，而決策深度並不會等比增加。</p>
+
+<h3 class="sub">歲入公式</h3>
+<div class="formula">金 = Σ 商業 × 2.0 × (0.6 + 民忠/250) × 難度倍率
+糧 = Σ 農業 × 1.5 × (0.6 + 民忠/250) × 難度倍率 − 總兵力 / 200</div>
+
+<p>以劉備開局四城計算：金約 240／季，糧約 +150／季。這個數字對應「每季能負擔 2 次徵兵」——剛好夠維持一支軍隊的成長，但不足以同時建設。公式中的「總兵力」包含在途行軍：軍隊開拔後照樣吃糧，出征不能規避補給成本。</p>
+
+<h3 class="sub">儲存上限 1000</h3>
+<p>金與糧的儲存上限各為 <b>1000</b>。歲入結算時以 <code>clamp(值, 0, 1000)</code> 截斷，溢出部分消失。這個上限是<b>消費壓力閥</b>：它讓囤積失去意義，玩家必須把資源轉成城池建設或兵力，否則每季都在浪費收入。自建勢力因起始僅一城，起始資源略高（金 800／糧 1000）以度過脆弱期。</p>
+
+<table class="small">
+<tr><th style="width:76px">難度</th><th>我方收入</th><th>AI 收入</th><th>AI 徵兵</th><th>AI 積極度</th><th>同盟上限</th></tr>
+<tr><td>簡單</td><td>×1.25</td><td>×0.85</td><td>×0.70</td><td>×0.80</td><td>3</td></tr>
+<tr><td>普通</td><td>×1.00</td><td>×1.00</td><td>×1.00</td><td>×1.00</td><td>2</td></tr>
+<tr><td>困難</td><td>×0.90</td><td>×1.15</td><td>×1.25</td><td>×1.15</td><td>2</td></tr>
+</table>
+
+<p>難度只調整「速率參數」，不修改任何公式結構——勝利曲線的形狀在三種難度下一致，差的是對手成長與容錯空間。同盟上限同時約束諸侯同盟與外族同盟，避免玩家用外交換取一面倒的安逸。</p>
+
+<h3 class="sub">缺糧懲罰</h3>
+<p>糧為負時，全勢力<em>每座城損失 6% 兵力</em>，糧歸零。這是本作唯一的「軟性崩盤」機制：它不會直接判你輸，但會在你正準備決戰時抽走你的兵。玩家必須在擴軍與開墾之間找到平衡，這也讓「農業」這條看似枯燥的數值有了戰略意義。</p>
+
+<div class="box accent">
+  <div class="bt">數值設計意圖</div>
+  <p>糧的消耗係數（兵力/200）是整個經濟的<em>節流閥</em>。它決定了單一勢力的兵力上限：當兵力達到約 6 萬時，糧收支開始轉負。想突破這個上限，唯一辦法是打下更多農業城——擴張因此成為經濟需求，而不只是勝利條件。這讓「為什麼要打仗」有了一個內生的答案。</p>
+</div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+<h2 class="sec"><span class="num">07</span>內政與軍事指令</h2>
+
+<h3 class="sub">六道內政令</h3>
+<table class="small">
+<tr><th style="width:76px">指令</th><th style="width:96px">成本</th><th>效果</th><th>使用時機</th></tr>
+<tr><td>開發</td><td>金 80</td><td>農業 +4～7（受政治加成）</td><td>長期布局，後方城</td></tr>
+<tr><td>興商</td><td>金 80</td><td>商業 +4～7（受政治加成）</td><td>金不足時優先</td></tr>
+<tr><td>修城</td><td>金 100</td><td>城防 +3～6</td><td>前線城、預期被攻</td></tr>
+<tr><td>徵兵</td><td>金 120</td><td>兵力 +3000×(0.6+民忠/200)，民忠 -4</td><td>進攻前 2～3 季</td></tr>
+<tr><td>撫民</td><td>金 60</td><td>民忠 +5～9</td><td>新佔城池、徵兵過度後</td></tr>
+<tr><td>練兵</td><td>金 50</td><td>士氣提振（預留欄位）</td><td>目前為敘事性指令</td></tr>
+</table>
+
+<div class="box">
+  <div class="bt">已知缺口</div>
+  <p>「練兵」目前只寫入日誌、沒有實際數值效果，是為士氣系統預留的介面。見第 16 章。</p>
+</div>
+
+<h3 class="sub">兩道軍事指令</h3>
+<p><b>出征</b>：選擇鄰接敵城、主將、兵力與兵種編制，大軍開拔。<br>
+<b>調兵</b>：把兵力移往鄰接的我方城池，不發生戰鬥。調兵與出征<em>共用同一個行動額度</em>——這是整個系統最關鍵的一條限制，它保證了「集結」和「進攻」不能在同一季完成，玩家必須提前一季布局。</p>
+
+<p>這個設計直接解決了原型早期的一個致命問題：如果調兵免費，玩家可以每季把所有兵瞬間堆到前線，戰爭變成單純的數字比大小，地理位置失去意義。</p>
+
+<h3 class="sub">行軍：5 季</h3>
+<p>出征<em>不是</em>即時結算。大軍撥出後進入「行軍中」狀態，需 <b>5 季</b>才能抵達目標。這個改動把「戰爭」從一次按鈕變成一段有長的時間窗，整個遊戲的節奏因此改變：</p>
+<ul>
+  <li><b>兵力即時扣除，主將隨軍離城</b>——行軍中的部隊既不能守出發城，也不能在途中改道。</li>
+  <li><b>雙方皆可見</b>：頂部「行軍」條列出所有在途部隊（勢力、兵力、路線、剩餘季數），3D 地圖上以一面移動的小旗標示進度。敵軍來攻有 5 季的預警期，守方可以徵兵、修城、向盟友求援。</li>
+  <li><b>持續耗糧</b>：行軍部隊計入該勢力的總兵力，糧食消耗不因出征而暫停。</li>
+  <li><b>抵達時機結算</b>：若目標在 5 季內易主（被第三方攻下），部隊改為直接進駐空城或駐防我方城池；敵城才決戰。若出發城中途易主，敗戰殘兵只能就近投奔友好城池，歸路已斷則潰散。</li>
+  <li><b>AI 同樣受行軍限制</b>——AI 的出征也變成可預警的行軍，玩家從地圖上就能讀出 AI 的意圖。</li>
+</ul>
+<div class="box">
+  <div class="bt">為什麼是 5 季</div>
+  <p>太短（1～2 季）等於沒有預警，弱勢方仍然是被動挨打；太長（8 季以上）則邊疆長期失去守軍、佔領成本過高，玩家傾向龜縮。5 季剛好夠守方完成一次徵兵加一次修城，也夠攻方再集結第二支軍隊形成鉗形攻勢——戰爭因此從「比大小」變成「調度與時機」。</p>
+</div>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+<h2 class="sec"><span class="num">08</span>戰鬥系統</h2>
+
+<p>戰鬥為<em>自動結算</em>，最多四陣交鋒，結束後給出逐陣戰報。不做即時操作——本作的樂趣在於「戰前準備」，而非「戰中微操」。</p>
+
+<h3 class="sub">結算流程</h3>
+<ol>
+  <li><b>單挑</b>（28% 機率）：雙方主將以 <code>武力 + 隨機(0,22)</code> 對決。勝方全軍戰力 ×1.12，敗方 ×0.90。</li>
+  <li><b>計略</b>（智力高出對手 8 點以上，55% 機率）：火計削去守軍 5%～10% 兵力。</li>
+  <li><b>四陣交鋒</b>：每陣雙方同時計算傷亡。</li>
+  <li><b>判定</b>：守軍低於開戰時兵力 15% → 城破；否則攻方退兵。</li>
+</ol>
+
+<h3 class="sub">兵種編制</h3>
+<p>出征前，玩家要把出擊兵力拆成<b>騎兵、弓兵、刀兵、盾兵</b>四種。四者構成一個相剋環，任一兵種只剋一種、只被一種剋：</p>
+<div class="formula">騎兵 → 剋 弓兵 → 剋 刀兵 → 剋 盾兵 → 剋 騎兵（回到起點）</div>
+
+<table class="small">
+<tr><th>兵種</th><th class="n">攻係數</th><th class="n">守係數</th><th>剋制</th><th>被剋</th><th>性格</th></tr>
+<tr><td>騎兵</td><td class="n">1.03</td><td class="n">0.86</td><td>弓兵</td><td>盾兵</td><td>衝擊力最強，不耐圍困</td></tr>
+<tr><td>弓兵</td><td class="n">1.02</td><td class="n">0.94</td><td>刀兵</td><td>騎兵</td><td>輸出穩定，怕騎兵衝陣</td></tr>
+<tr><td>刀兵</td><td class="n">0.99</td><td class="n">1.02</td><td>盾兵</td><td>弓兵</td><td>攻守均衡的基準</td></tr>
+<tr><td>盾兵</td><td class="n">0.96</td><td class="n">1.18</td><td>騎兵</td><td>刀兵</td><td>守城極硬，攻堅乏力</td></tr>
+</table>
+
+<p>關鍵設計：<b>攻係數四項相加恰好為 4.00，守係數亦然</b>。因此「四兵種各 25%」的均衡編制，戰力權重剛好是 1.00——引入兵種系統<b>不會</b>整體偏移原本已驗證過的平衡曲線。四種兵只在「極端配置」時才拉開差距，這讓兵種成為一個<b>可選的放大器</b>，而不是必修課。</p>
+
+<div class="formula">兵種戰力(攻) = Σ 該兵種比例 × 攻係數
+兵種戰力(守) = Σ 該兵種比例 × 守係數
+相剋係數 = 1 + 0.55 × Σ [ 我方比例(k) × ( 敵方被剋比例 − 敵方剋我比例 ) ]</div>
+
+<p>相剋係數的取值範圍是 <code>0.45 ~ 1.55</code>。均衡對均衡時，括號內各項互相抵消，係數恰為 1.00。極端情況（全騎對全盾）則是 ×0.45 —— 攻勢直接腰斬。</p>
+
+<div class="box">
+  <div class="bt">為什麼不讓兵種互有攻守優劣</div>
+  <p>最初版本讓騎兵攻 1.16、盾兵攻 0.74，結果「用盾兵剋制敵方騎兵」反而比均衡編制更弱——因為攻擊係數的懲罰（−36%）遠大於相剋的獎勵（+4%）。數值模擬顯示這種設計會讓相剋系統變成陷阱。改為<b>攻係數幾乎持平、守係數拉開</b>之後，兵種差異主要體現在「守城硬度」與「相剋」兩處，相剋才真正成為有意義的決策。</p>
+</div>
+
+<h3 class="sub">實測：編制的影響力</h3>
+<p>同一兵力比（13000 攻 10000，城防 60）、同一組武將，只換編制，各跑 4000 次：</p>
+<table class="small">
+<tr><th>攻方編制</th><th>守方編制</th><th class="n">勝率</th><th>說明</th></tr>
+<tr><td>均衡</td><td>均衡</td><td class="n">1.8%</td><td>基準線</td></tr>
+<tr><td>盾兵 60%</td><td>騎兵 60%</td><td class="n">16.0%</td><td>相剋成立，勝率 ×9</td></tr>
+<tr><td>弓兵 60%</td><td>騎兵 60%</td><td class="n">0.0%</td><td>被剋，比均衡更差</td></tr>
+<tr><td>刀兵 60%</td><td>盾兵 60%</td><td class="n">17.5%</td><td>相剋成立</td></tr>
+<tr><td>弓兵 60%</td><td>刀兵 60%</td><td class="n">27.5%</td><td>相剋成立，且刀兵守係數低</td></tr>
+<tr><td>均衡</td><td>盾兵 60%</td><td class="n">1.4%</td><td>盾兵守城硬，更難打</td></tr>
+</table>
+<p>結論：<b>選對兵種約等於多帶 15% 的兵</b>。這是一個「值得想、但不至於決定一切」的權重——符合設計支柱中「兵力仍是主變量」的要求。</p>
+
+<h3 class="sub">守方的編制</h3>
+<p>守城時用的是該城的<b>常備編制</b>（依勢力與地域生成：涼州騎兵可達 46%，揚州弓兵可達 32%）。玩家可用「<b>整編</b>」內政令調整本城編制，預先為即將到來的進攻做準備。這使防禦不再是純粹的兵力堆疊。</p>
+
+<h3 class="sub">傷害公式</h3>
+<div class="formula">戰力(攻) = 兵力 × (0.55 + 統率/220) × 士氣 × 兵種戰力(攻) × 相剋係數
+戰力(守) = 兵力 × (0.55 + 統率/220) × 士氣 × 兵種戰力(守) × 相剋係數
+
+攻方傷亡 = 守方戰力 × 0.15 × 隨機(0.9, 1.1)
+守方傷亡 = 攻方戰力 × 0.18 ÷ (1 + 城防/260) × 隨機(0.9, 1.1)</div>
+
+<div class="box accent">
+  <div class="bt">為什麼城防只減傷、不影響破城判定</div>
+  <p>這是刻意的分離設計。<b>城防</b>決定「你要付出多少代價」，<b>兵力差</b>決定「你能不能打下來」。兩者分開後，玩家能清楚理解：<em>「我兵夠，但會死很多人」</em>與<em>「我兵不夠，打不動」</em>是兩件不同的事，對應兩種不同的解法（補兵 vs 圍城消耗）。若把兩者混在同一個係數裡，玩家只會得到一個模糊的「打不打得過」。</p>
+</div>
+
+<h3 class="sub">攻城門檻</h3>
+<p>由公式可推導出「破城所需兵力比」。這個比值只取決於攻方統率與守方城防，<em>與守方兵力無關</em>——因為破城判定看的是守軍的百分比損耗。</p>
+<div class="formula">所需兵力比 ≈ (1 − 15%) ÷ [ 4 × 0.18 × (0.55 + 統率/220) ] × (1 + 城防/260)</div>
+
+<table class="small">
+<tr><th>攻方統率</th><th class="n">城防 40</th><th class="n">城防 60</th><th class="n">城防 80</th><th class="n">城防 100</th></tr>
+<tr><td>60（庸將）</td><td class="n">1.34</td><td class="n">1.43</td><td class="n">1.52</td><td class="n">1.61</td></tr>
+<tr><td>80（良將）</td><td class="n">1.20</td><td class="n">1.28</td><td class="n">1.36</td><td class="n">1.44</td></tr>
+<tr><td>97（名將）</td><td class="n">1.13</td><td class="n">1.20</td><td class="n">1.28</td><td class="n">1.35</td></tr>
+</table>
+
+<p>於是「<em>倍而攻之</em>」成為本作的核心軍事常識：帶 1.5 倍兵去打中等城防，名將能穩克，庸將則會失敗。這條規則簡單到玩家可以在心裡默算，卻足以支撐整個戰略深度。</p>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+<h2 class="sec"><span class="num">09</span>外交系統</h2>
+
+<p>外交刻意做得極簡，只保留兩個動作，因為本作的主軸是軍事，外交是節奏調節器而非第二套玩法。</p>
+
+<table class="small">
+<tr><th style="width:88px">動作</th><th style="width:88px">成本</th><th>效果</th></tr>
+<tr><td>贈金</td><td>金 200</td><td>雙方關係 +12／+10</td></tr>
+<tr><td>結盟</td><td>關係 ≥ 75</td><td>關係鎖定 100，AI 不會主動來犯</td></tr>
+</table>
+
+<p>關係值 0–100，初始 50。AI 在選擇攻擊目標時會跳過關係 ≥ 75 的勢力。這使得「花 200 金買東線平安，把兵力抽去打西線」成為一個真實可行的策略——也是弱勢勢力（馬騰、劉備）唯一的破局手段。</p>
+
+<h3 class="sub">五支外族</h3>
+<p>外族<em>不佔據地圖城池</em>，是獨立於諸侯之外的第三種外交對象。每支有獨立的關係值（初始 28–42）與結盟門檻，贈金花費也各不相同——越強的援軍越貴。</p>
+
+<table class="small">
+<tr><th style="width:64px">外族</th><th style="width:88px">贈金</th><th style="width:80px">結盟門檻</th><th>同盟效益</th></tr>
+<tr><td>匈奴</td><td class="n">300</td><td class="n">70</td><td>每季 60% 機率獻騎兵援軍 1200～2600 於隨機我方城池</td></tr>
+<tr><td>羌</td><td class="n">250</td><td class="n">65</td><td>每季納貢 金 90～170</td></tr>
+<tr><td>烏桓</td><td class="n">280</td><td class="n">70</td><td>出征時協同攻擊，追加我方出兵 12%</td></tr>
+<tr><td>山越</td><td class="n">220</td><td class="n">60</td><td>受攻擊時援防，守軍 +7%、士氣 +4%</td></tr>
+<tr><td>南蠻</td><td class="n">260</td><td class="n">65</td><td>每季 60% 機率遣勇士 1000～2200</td></tr>
+</table>
+
+<p>外族關係以 9～16／次 的幅度提升，約需 3～5 次贈金才能結盟。結盟後關係鎖定 100，效益在每季歲入結算後結算。<b>外族同盟計入同盟總數上限</b>，因此「全結」不是選項——玩家必須在外族援軍與諸侯互不侵犯之間做取捨。</p>
+
+<div class="box">
+  <div class="bt">設計意圖</div>
+  <p>外族填補了原本「外交只能買太平」的單調性：羌是經濟選項、匈奴與南蠻是軍事選項、烏桓與山越是攻防兩端的主動技能。他們不佔城，因此不會破壞「佔領全部城池」的勝利節奏，卻讓邊緣位置（涼州、揚州）的勢力有了額外的縱深。</p>
+</div>
+
+<div class="box">
+  <div class="bt">待補</div>
+  <p>目前結盟沒有期限、沒有背盟懲罰、AI 也不會主動提議。這讓同盟過於廉價。見第 16 章。</p>
+</div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+<h2 class="sec"><span class="num">10</span>事件系統</h2>
+
+<p>每季 38% 機率觸發一次隨機事件，作用於玩家隨機一座城。事件的目的不是製造混亂，而是<em>打破經濟的確定性</em>，讓玩家無法精算到最後一金。</p>
+
+<table class="small">
+<tr><th style="width:88px">事件</th><th style="width:56px">權重</th><th>效果</th></tr>
+<tr><td>五穀豐登</td><td class="n">1/6</td><td>糧 +120～260</td></tr>
+<tr><td>蝗災</td><td class="n">1/6</td><td>糧 −100～220</td></tr>
+<tr><td>民變</td><td class="n">1/6</td><td>民忠 −6～12</td></tr>
+<tr><td>商賈雲集</td><td class="n">1/6</td><td>金 +100～200</td></tr>
+<tr><td>軍中疫病</td><td class="n">1/6</td><td>兵力 −4%～9%</td></tr>
+<tr><td>風調雨順</td><td class="n">1/6</td><td>民忠 +4～8</td></tr>
+</table>
+
+<p>權重刻意平均。若讓負面事件更常見，玩家會覺得被系統針對；若讓正面更常見，事件就失去張力。平均權重下，玩家每六季會遇到一次壞事——足以記住，但不至於摧毀計畫。</p>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+<h2 class="sec"><span class="num">11</span>AI 設計</h2>
+
+<p>AI 每季依序執行三個階段。設計原則是<em>行為可預測、決策不愚蠢</em>——玩家應該能從地圖上讀出 AI 的意圖，而不是被莫名其妙的偷襲打敗。</p>
+
+<h3 class="sub">階段一：內政</h3>
+<p>每座城 70% 機率下達一道內政令。選項按權重抽取：徵兵佔三份（兵力 &lt; 28000 且糧 &gt; 150 時），修城、開發、興商、撫民各一份。這使得 AI 的兵力會穩定成長，但不會無視糧食無限擴軍。</p>
+
+<h3 class="sub">階段二：兵力集結</h3>
+<p>找出「四周無敵」的內地城池，把 85% 的兵力（保留 2000）調往鄰接的前線城。最多執行三輪，形成鏈式輸送。</p>
+
+<div class="box">
+  <div class="bt">這一段是 AI 的關鍵</div>
+  <p>原型早期沒有集結行為時，AI 的兵力平均分散在每座城，永遠湊不出 1.5 倍兵力，導致整局 120 季沒有任何城池易手。加入集結後，AI 才真正成為威脅——這說明在大戰略遊戲裡，<em>AI 的強度主要來自資源調度，而不是決策聰明度</em>。</p>
+</div>
+
+<h3 class="sub">階段三：出征</h3>
+<p>對每座前線城，尋找鄰接敵城，條件為：</p>
+<div class="formula">可動兵力 = 駐軍 − 1500
+需求兵力 = 守軍 × (1.65 + 城防/320)
+若 可動兵力 ≥ 需求兵力 → 出兵 90% 可動兵力</div>
+<p>關係 ≥ 75 的勢力跳過。每勢力每季最多發動兩次攻擊。AI 的出征與玩家同樣進入 5 季行軍，不會即時結算。</p>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+<h2 class="sec"><span class="num">12</span>節奏曲線與勝負</h2>
+
+<p>一局的理想節奏分為四段。目前原型的實測結果（見第 15 章）顯示前期與中期符合預期，後期「最後一擊」偏長。</p>
+
+<table class="small">
+<tr><th style="width:88px">階段</th><th style="width:88px">約略季數</th><th>玩家在做什麼</th><th>情緒</th></tr>
+<tr><td>立足</td><td class="n">1–10</td><td>徵兵、打無主城、修築邊防</td><td>謹慎、算計</td></tr>
+<tr><td>擴張</td><td class="n">11–30</td><td>集中兵力、吞併弱小勢力</td><td>順風、膨脹</td></tr>
+<tr><td>對峙</td><td class="n">31–55</td><td>與最強諸侯拉鋸，補給線拉長</td><td>緊張、資源吃緊</td></tr>
+<tr><td>收束</td><td class="n">56–75</td><td>多線推進，處理殘餘勢力</td><td>掌控感</td></tr>
+</table>
+
+<h3 class="sub">勝負判定</h3>
+<p>勝利：佔領全部 24 城，或其餘勢力全滅。失敗：本方城池歸零。判定在每次戰鬥結算後與每季結束時各檢查一次。</p>
+
+<div class="box accent">
+  <div class="bt">為什麼要求「全部城池」而非「消滅所有勢力」</div>
+  <p>若只要求消滅勢力，玩家會在消滅最後一個諸侯的瞬間獲勝，留下三座無主城沒打——結局感覺草率。要求全部 24 城，強迫玩家把地圖填滿，視覺上才有「統一」的完成感。</p>
+</div>
+</section>
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+<h2 class="sec"><span class="num">13</span>介面與美術</h2>
+
+<h3 class="sub">視覺方向</h3>
+<p>宣紙底、墨色字、硃砂紅作為唯一強調色。字體優先使用系統明體／宋體，不載入網路字體以確保離線可執行。整體氣質參照古籍刻本，而非現代手遊的厚重金屬質感。</p>
+
+<table class="small">
+<tr><th style="width:110px">色票</th><th>用途</th></tr>
+<tr><td><code>#f6f0e2</code></td><td>紙底</td></tr>
+<tr><td><code>#28221b</code></td><td>正文墨色</td></tr>
+<tr><td><code>#9e2f2a</code></td><td>硃砂紅：強調、出征、危險</td></tr>
+<tr><td><code>#a8802a</code></td><td>赭金：分隔線、數值條</td></tr>
+<tr><td><code>#2f6fb3 / #b23a3a / #7d5aa6 / #2f7d55 / #b8862b</code></td><td>五勢力識別色</td></tr>
+</table>
+
+<h3 class="sub">版面</h3>
+<p>三區固定佈局：<b>頂欄</b>（資源與回合）、<b>左側地圖</b>（佔 70% 寬）、<b>右側面板</b>（城池／武將／外交三分頁）、<b>底部日誌</b>。地圖永遠可見，因為本作所有決策都依賴地理位置關係。</p>
+
+<p>城池節點採「色塊圓 + 城名 + 兵力」三段式：顏色識別歸屬，圓內文字識別城池，圓內下方小字顯示兵力。兵力刻意放在圓<em>內</em>而非圓外——原型第一版放在圓外，結果密集區域（許昌／陳留／汝南）的兵力數字互相重疊，可讀性崩壞。</p>
+
+<h3 class="sub">3D 地圖</h3>
+<p>地圖由 SVG 改為 <b>Canvas 2D 自製的軸測投影渲染器</b>：正交投影 + 固定俯角（可上下拖曳 0.16～0.72 rad 調整）+ 水平旋轉（拖曳改變方位角），零依賴、單檔可離線。與 3D 疆域圖共用同一套手法。</p>
+
+<p>每座城池是一個<b>圓柱柱體</b>：柱高 = 駐軍兵力 / 450（clamp 2.5～44），半徑 24～27。這個映射讓「兵力」直接變成視覺高度——一眼就能看出誰是強國、誰在集結。側面用勢力色降 34% 亮度、頂面用原色，形成簡單的方向光照；地面以 painter's algorithm 按旋轉後深度排序，遠的先畫。</p>
+
+<p>城名與兵力標籤畫在柱頂上方，標註依字寬做<em>碰撞避讓</em>（每枚標籤記錄估算寬度，重疊則上移 27px，最多試 8 次），避免中原密集區的字疊字。都城在地面有金色虛線環，選取城池有地面紅色光環。點擊判定以柱體中點的投影圓為範圍（半徑 +12），因此點柱子中段也能選中。</p>
+
+<h3 class="sub">音效與音樂</h3>
+<p>音效使用 <b>Web Audio API 即時合成</b>，不載入任何外部音檔——這保持單檔離線的特性，也讓音效可以隨遊戲狀態即時變化。系統包含：</p>
+
+<table class="small">
+<tr><th style="width:88px">音效</th><th>合成方式</th></tr>
+<tr><td>介面點擊</td><td>880 Hz 正弦，50 ms 衰減</td></tr>
+<tr><td>獻金</td><td>1046 + 1568 Hz 三角波雙音</td></tr>
+<tr><td>出征號令</td><td>220 Hz 鋸齒 + 110 Hz 方波疊加</td></tr>
+<tr><td>交兵</td><td>帶通濾波白噪聲（900 Hz）</td></tr>
+<tr><td>勝／敗</td><td>C 大調上／下行四音琶音</td></tr>
+<tr><td>背景音樂</td><td>五聲音階隨機漫步（宮商角徵羽），每 0.7～2.1 s 一音，35% 機率疊低八度襯底</td></tr>
+</table>
+
+<p>BGM 以 random walk 而非固定旋律：既有古意，又不會因循環而令人厭煩。左下角按鈕可開關（關閉時半透明顯示）。首次由使用者手勢（開局）啟動，符合瀏覽器自動播放政策。</p>
+
+<h3 class="sub">資訊揭露原則</h3>
+<p>出征視窗前必須同時顯示：目標守軍、城防、兵力倍數、以及一句白話勝算評語（「兵力優勢明顯，勝算甚高」／「強攻凶多吉少」）。玩家不應該需要自己算公式才能做決定。</p>
+</section>
+
+<!-- ============ 14 ============ -->
+<section id="s14">
+<h2 class="sec"><span class="num">14</span>技術架構</h2>
+
+<p>原型為<em>單一 HTML 檔</em>（約 2,600 行），無外部依賴、無建置流程、可離線執行。這個選擇是為了讓設計能被立刻驗證——任何人拿到檔案雙擊就能玩，不需要安裝任何東西。</p>
+
+<table class="small">
+<tr><th style="width:110px">層</th><th>實作</th></tr>
+<tr><td>資料</td><td><code>CITY_DEFS</code> / <code>GENERAL_DEFS</code> / <code>FACTIONS</code> / <code>TRIBES</code> 四個常數表，純資料</td></tr>
+<tr><td>狀態</td><td>單一 <code>state</code> 物件：<code>{turn, player, cities, generals, treasury, rel, tribes, log, over, diff, custom, marches}</code>；<code>marches</code> 為在途行軍部隊（出發城、目標、兵力、主將、編制、剩餘季數）</td></tr>
+<tr><td>渲染</td><td>字串模板 + <code>innerHTML</code> 全量重繪；地圖為 Canvas 2D 軸測投影（<code>Map3D</code> 模組）</td></tr>
+<tr><td>音訊</td><td><code>AudioSys</code> 模組，Web Audio 即時合成，無外部音檔</td></tr>
+<tr><td>互動</td><td>單一事件委派監聽器，依 <code>data-act</code> 分派；地圖另綁定拖曳與點擊</td></tr>
+<tr><td>存檔</td><td><code>localStorage</code>（鍵 <code>sgz_save_v1</code>）序列化整個 <code>state</code>；開始畫面「載入存檔」按鈕在有存檔時顯示並帶摘要（回合數 · 勢力），載入後修正常衍生狀態（行軍顯示進度、選取城、行軍序號）</td></tr>
+</table>
+
+<div class="box">
+  <div class="bt">為什麼用全量重繪</div>
+  <p>狀態規模極小（24 城 × 9 欄位），全量重繪的效能成本可忽略，卻能徹底避免「某處狀態改了但畫面沒更新」這類最難查的 bug。這是原型階段的合理取捨；若日後擴充到百城規模，需改為差異更新。</p>
+</div>
+
+<h3 class="sub">存檔設計</h3>
+<p>一局 30～90 分鐘的遊戲若不能中斷續玩，玩家只會在「剛好有空」時才打開它——這對試玩轉化是毀滅性的。因此存檔不是附加功能，而是基礎設施：</p>
+<ul>
+<li><b>單一鍵值</b>：整個 <code>state</code> 以 JSON 寫入 <code>localStorage</code>。結構全是純資料（無函式、無循環參照），因此不需要自訂序列化格式——這是一開始就堅持「狀態與邏輯分離」換來的紅利。</li>
+<li><b>操作入口</b>：頂欄「儲存遊戲／載入遊戲／新開遊戲」三鍵，另支援 Ctrl+S 快速儲存；開始畫面在偵測到存檔時浮出「載入存檔（第 N 季 · 勢力）」按鈕。</li>
+<li><b>載入後修復</b>：只存「事實」，不存「衍生」。行軍的畫面顯示進度（<code>disp</code>）於載入時依剩餘季數重算，選取城重設為我方首城，行軍序號接續最大值，避免載入後出現 ID 衝突。</li>
+<li><b>損毀保護</b>：JSON 解析與必要欄位（<code>cities</code>）檢查包在 try/catch 中，壞檔只擋下載入、不會讓遊戲崩潰。</li>
+</ul>
+
+<h3 class="sub">驗證方式</h3>
+<p>本作的數值不是憑感覺調的。開發過程建立了七支 Node 腳本：</p>
+<ul>
+<li><b>平衡驗算</b>：複製戰鬥公式，對每組兵力／統率／城防跑 3000 次蒙地卡羅，輸出勝率與平均殘兵。</li>
+<li><b>無頭煙霧測試</b>：以 DOM stub 載入遊戲，跑完整對局，確認零執行期錯誤。</li>
+<li><b>機器人對局</b>：以貪婪策略自動遊玩五個勢力各六局，量測回合數、城池數、勝率。</li>
+<li><b>兵種相剋量化</b>：固定其餘變數、只換編制各跑 4000 次，驗證相剋係數的實際影響力。</li>
+<li><b>行軍系統</b>：26 項斷言，驗證 5 季行軍的建立、逐季倒數、抵達三態、主將歸處、耗糧與行軍條。</li>
+<li><b>地形與動畫</b>：以 Proxy 假畫布跑完整渲染，驗證山脈／河川不壓住城池、特效生命週期與 30 枚行軍同框的壓力測試。</li>
+<li><b>存檔</b>：驗證儲存／載入／新開流程、行軍狀態還原、壞檔保護。</li>
+<li><b>行軍系統測試</b>（26 項斷言）：驗證出征產生 5 季行軍、逐季倒數、抵達決戰／駐防、主將歸處、AI 同樣行軍、行軍計入耗糧、五勢力 60 季長跑零錯誤。</li>
+</ul>
+</section>
+
+<!-- ============ 15 ============ -->
+<section id="s15">
+<h2 class="sec"><span class="num">15</span>平衡基線（實測）</h2>
+
+<p>以下數據來自 3000 次蒙地卡羅模擬，公式與遊戲內完全一致。這是後續調參的基準線。</p>
+
+<h3 class="sub">攻城勝率</h3>
+<table class="small">
+<tr><th>情境</th><th class="n">兵力比</th><th class="n">勝率</th><th class="n">勝時殘兵</th><th class="n">損耗</th></tr>
+<tr><td>10000 統97 vs 8000 統85（防55）</td><td class="n">1.25</td><td class="n r">0.4%</td><td class="n">—</td><td class="n">—</td></tr>
+<tr><td>12000 統97 vs 8000 統85（防55）</td><td class="n">1.50</td><td class="n y">50.6%</td><td class="n">9,415</td><td class="n">22%</td></tr>
+<tr><td>14000 統97 vs 8000 統85（防55）</td><td class="n">1.75</td><td class="n g">98.7%</td><td class="n">11,446</td><td class="n">18%</td></tr>
+<tr><td>16000 統97 vs 8000 統85（防55）</td><td class="n">2.00</td><td class="n g">100%</td><td class="n">13,679</td><td class="n">15%</td></tr>
+<tr><td>15000 統82 vs 8000 統88（防75）</td><td class="n">1.88</td><td class="n y">66.6%</td><td class="n">12,085</td><td class="n">19%</td></tr>
+<tr><td>18000 統82 vs 8000 統88（防75）</td><td class="n">2.25</td><td class="n g">100%</td><td class="n">15,265</td><td class="n">15%</td></tr>
+<tr><td>20000 統82 vs 10000 統88（防100）</td><td class="n">2.00</td><td class="n y">65.2%</td><td class="n">16,353</td><td class="n">18%</td></tr>
+<tr><td>24000 統82 vs 10000 統88（防100）</td><td class="n">2.40</td><td class="n g">100%</td><td class="n">20,575</td><td class="n">14%</td></tr>
+</table>
+
+<h3 class="sub">讀表結論</h3>
+<ul>
+<li><b>曲線偏陡</b>：1.5 倍是擲硬幣，1.75 倍幾乎必勝。這是「破城門檻」機制的必然結果——判定是二元式的。</li>
+<li><b>陡峭在此處是優點</b>：玩家只要記住「帶足 1.5～2 倍」就能穩定推進，不需要背公式。決策成本低，但決策依然存在。</li>
+<li><b>傷亡約 15～22%</b>：攻城是有代價的，但代價可承受。這確保玩家不會因為一次攻城而崩盤，也不會覺得攻城毫無成本。</li>
+<li><b>城防 100 需要 2.4 倍兵力</b>：滿防城的威懾力足夠，讓「修城」在後期成為有效選項。</li>
+</ul>
+
+<h3 class="sub">自動對局結果（五勢力各 6 局，上限 120 季）</h3>
+<table class="small">
+<tr><th>勢力</th><th class="n">平均季數</th><th class="n">平均城池</th><th class="n">勝</th><th class="n">亡</th></tr>
+<tr><td>曹操</td><td class="n">88</td><td class="n">1.5 / 24</td><td class="n">0 / 6</td><td class="n">3 / 6</td></tr>
+<tr><td>孫權</td><td class="n">121</td><td class="n">3.0 / 24</td><td class="n">0 / 6</td><td class="n">0 / 6</td></tr>
+<tr><td>袁紹</td><td class="n">85</td><td class="n">1.3 / 24</td><td class="n">0 / 6</td><td class="n">3 / 6</td></tr>
+<tr><td>劉備</td><td class="n">94</td><td class="n">2.0 / 24</td><td class="n">0 / 6</td><td class="n">2 / 6</td></tr>
+<tr><td>馬騰</td><td class="n">105</td><td class="n">2.5 / 24</td><td class="n">0 / 6</td><td class="n">1 / 6</td></tr>
+</table>
+
+<div class="box accent">
+  <div class="bt">如何解讀這組數字</div>
+  <p>這批數據來自一個<em>刻意寫得很笨的機器人</em>：它每城平均徵兵、把守軍抽到只剩 800 就出征、從不回防。它驗證的是「系統能否跑完且不崩」，<b>不能</b>當作人類難度曲線。</p>
+  <p>真正有價值的訊號是：它幾乎每局都被 AI 反推，說明「後方空虛會被懲罰」這條設計意圖確實生效了。人類玩家會留守、會用外交、會集中兵力，實際表現應顯著優於此。</p>
+</div>
+</section>
+
+<!-- ============ 16 ============ -->
+<section id="s16">
+<h2 class="sec"><span class="num">16</span>已知問題與下一步</h2>
+
+<h3 class="sub">必須修</h3>
+<table class="small">
+<tr><th style="width:34px">#</th><th style="width:120px">問題</th><th>說明與對策</th></tr>
+<tr><td>1</td><td>練兵無數值效果</td><td>預留給士氣系統。應改為：士氣 0–100，影響戰力 ±15%，敗仗後下降，勝仗與練兵提升。</td></tr>
+<tr><td>2</td><td>同盟無期限、無代價</td><td>結盟應有時限（如 12 季）與維持費（每季 50 金），背盟則全勢力關係 -30。<b>目前已部分緩解</b>：同盟上限依難度收緊，外族同盟亦計入限額。</td></tr>
+<tr><td>3</td><td>無存檔</td><td><b>已實作</b>：<code>localStorage</code> 序列化 <code>state</code>（鍵 <code>sgz_save_v1</code>），頂欄三鍵（儲存／載入／新開）＋ Ctrl+S，開始畫面顯示存檔摘要。詳見第 14 章「存檔設計」。</td></tr>
+<tr><td>4</td><td>武將不會成長</td><td>戰後經驗值累積，緩慢提升統率／武力。讓「帶同一支部隊」有長期回報。</td></tr>
+<tr><td>5</td><td>自建勢力強度未調</td><td>自建勢力起始僅一城 + 4 將，困難難度下生存壓力極大。目前以起始資源（金 800／糧 1000）補救，需進一步以蒙地卡羅驗證三難度下的生存率。</td></tr>
+</table>
+
+<h3 class="sub">應該加</h3>
+<ul>
+<li><b>俘虜與登用</b>：攻城後有機率俘獲敵將，可依忠誠判定招降。這是三國題材的核心趣味之一，目前完全缺失。</li>
+<li><b>武將疲勞</b>：連續出征會降低戰力，迫使玩家輪換將領，讓板凳武將有價值。</li>
+<li><b>多劇本</b>：目前只有「群雄割據」一個開局。可加「官渡之戰」「赤壁之戰」等不同初始版圖。</li>
+<li><b>戰報重播</b>：把四陣交鋒做成逐陣動畫，強化戰鬥的儀式感。</li>
+</ul>
+
+<h3 class="sub">可以砍</h3>
+<ul>
+<li><b>外交的「贈金」若使用率低</b>，可簡化為單一「結盟」按鈕，降低介面複雜度。</li>
+<li><b>民忠</b>若在實測中對玩家決策影響有限，可合併進「農業」的產出係數，少一個數值。</li>
+</ul>
+
+<div class="box" style="margin-top:26px">
+  <div class="bt">下一步建議</div>
+  <p>先做 <b>#1 士氣系統</b> 與 <b>#4 武將成長</b>，這兩項會直接改變「該派誰出征」的決策深度，是投入產出比最高的改動。俘虜與登用系統其次。多劇本與戰報動畫留到玩法驗證之後。</p>
+</div>
+</section>
+
+<div style="text-align:center;color:var(--ink-3);font-size:12px;letter-spacing:2px;
+  border-top:1px solid var(--line);padding-top:24px;margin-top:20px">
+  三國志 · 霸業　設計文檔 v0.1　·　數值以可執行原型為準
+</div>
+
+</div>
+</body>
+</html>

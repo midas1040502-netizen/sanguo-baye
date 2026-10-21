@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>三國疆域圖 · 立體</title>
+<style>
+:root{
+  --paper:#f2e9d5; --paper-2:#e9dfc7; --ink:#2c261d; --ink-2:#5c5243; --ink-3:#8b7f69;
+  --line:#c4b291; --accent:#8c2f28; --sea:#dde6e6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"Songti TC","Songti SC","STSong","SimSun","Noto Serif TC",serif;
+  background:var(--paper); color:var(--ink); overflow:hidden;
+  background-image:radial-gradient(circle at 20% 8%, #fbf4e4 0%, transparent 45%),
+                   radial-gradient(circle at 85% 90%, #e8dcc2 0%, transparent 50%);
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.app{display:flex;flex-direction:column;height:100vh}
+
+header{flex:none;height:62px;display:flex;align-items:center;gap:20px;padding:0 22px;
+  border-bottom:1px solid var(--line);background:rgba(233,223,199,.7)}
+.brand{font-size:20px;letter-spacing:7px;white-space:nowrap}
+.brand small{font-size:11px;letter-spacing:3px;color:var(--ink-3);margin-left:8px}
+.yearbox{display:flex;align-items:baseline;gap:8px;padding-left:18px;border-left:1px solid var(--line)}
+.yearbox .y{font-size:26px;letter-spacing:2px;color:var(--accent);font-weight:600}
+.yearbox .era{font-size:13px;letter-spacing:4px;color:var(--ink-2)}
+.spacer{flex:1}
+.hint{font-size:11.5px;color:var(--ink-3);letter-spacing:1px;white-space:nowrap}
+.viewbtns{display:flex;gap:4px;padding-left:14px;border-left:1px solid var(--line)}
+.vb{font-size:11.5px;letter-spacing:2px;padding:4px 11px;border:1px solid var(--line);border-radius:2px;
+  color:var(--ink-3);background:rgba(255,250,240,.5);transition:.16s}
+.vb:hover{border-color:var(--ink-3);color:var(--ink-2)}
+.vb.on{background:var(--accent);color:#fffaf0;border-color:var(--accent)}
+
+.main{flex:1;display:flex;min-height:0}
+.mapwrap{flex:1;position:relative;min-width:0;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 42%, #eaf1f0 0%, #dbe5e5 55%, #cfdbdb 100%)}
+canvas#map{display:block;cursor:grab}
+canvas#map.drag{cursor:grabbing}
+/* 紙紋疊層 */
+.mapwrap::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:radial-gradient(circle at 30% 20%, rgba(255,252,240,.35) 0%, transparent 55%),
+                   radial-gradient(circle at 78% 82%, rgba(150,130,95,.10) 0%, transparent 60%);
+  mix-blend-mode:multiply;opacity:.3}
+
+aside{width:326px;flex:none;border-left:1px solid var(--line);background:rgba(242,233,213,.72);
+  display:flex;flex-direction:column;min-height:0}
+.era-head{padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+.era-title{font-size:19px;letter-spacing:5px;margin-bottom:8px}
+.era-desc{font-size:12.5px;line-height:1.95;color:var(--ink-2)}
+.flist{flex:1;overflow-y:auto;padding:12px 16px}
+.flist::-webkit-scrollbar{width:6px}
+.flist::-webkit-scrollbar-thumb{background:#cdbc9b;border-radius:3px}
+.frow{display:flex;align-items:center;gap:10px;padding:8px;border-radius:3px;
+  cursor:pointer;transition:.15s;border:1px solid transparent}
+.frow:hover{background:rgba(255,250,240,.7)}
+.frow.on{background:rgba(255,250,240,.95);border-color:var(--line)}
+.fchip{width:15px;height:15px;border-radius:2px;flex:none;border:1px solid rgba(0,0,0,.22)}
+.fmeta{flex:1;min-width:0}
+.fn{font-size:14px;letter-spacing:2px}
+.fsub{font-size:10.5px;color:var(--ink-3);margin-top:1px}
+.fnum{font-size:11px;color:var(--ink-3);white-space:nowrap}
+
+footer{flex:none;height:88px;border-top:1px solid var(--line);background:rgba(233,223,199,.72);
+  padding:14px 34px 0}
+.track{position:relative;height:46px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:46px;background:transparent;
+  position:absolute;inset:0;margin:0;cursor:pointer;z-index:3}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--accent);border:2px solid #fffaf0;margin-top:-6.5px;box-shadow:0 1px 5px rgba(90,30,25,.45)}
+input[type=range]::-moz-range-track{height:2px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--accent);
+  border:2px solid #fffaf0}
+.ticks{position:absolute;inset:0;pointer-events:none;z-index:2}
+.tick{position:absolute;transform:translateX(-50%);text-align:center;cursor:pointer;pointer-events:auto;top:0}
+.tick .dot{width:7px;height:7px;border-radius:50%;background:var(--line);margin:19px auto 0;
+  border:1px solid var(--paper-2);transition:.2s}
+.tick.on .dot{background:var(--accent);transform:scale(1.4)}
+.tick .lb{font-size:10.5px;color:var(--ink-3);letter-spacing:1px;margin-top:6px;white-space:nowrap}
+.tick.on .lb{color:var(--accent);font-weight:600}
+
+.tooltip{position:fixed;pointer-events:none;background:rgba(44,38,29,.93);color:#f4ecdc;
+  font-size:12px;padding:5px 10px;border-radius:3px;letter-spacing:1px;z-index:99;
+  opacity:0;transition:opacity .12s;white-space:nowrap}
+.tooltip.on{opacity:1}
+
+@media (max-width:940px){ aside{width:248px} .hint{display:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">三國疆域圖<small>立體形勢</small></div>
+    <div class="yearbox">
+      <span class="y" id="yearTxt">191</span>
+      <span class="era" id="eraTxt">群雄割據</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="hint" id="hint">拖曳旋轉　·　滾輪縮放　·　雙擊復位</div>
+    <div class="viewbtns">
+      <button class="vb on" data-cam="iso">立體</button>
+      <button class="vb" data-cam="top">俯視</button>
+      <button class="vb" data-cam="low">低角</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="mapwrap">
+      <canvas id="map"></canvas>
+    </div>
+    <aside>
+      <div class="era-head">
+        <div class="era-title" id="sideTitle">群雄割據</div>
+        <div class="era-desc" id="sideDesc"></div>
+      </div>
+      <div class="flist" id="factionList"></div>
+    </aside>
+  </div>
+
+  <footer>
+    <div class="track">
+      <input type="range" id="slider" min="0" max="4" step="1" value="0">
+      <div class="ticks" id="ticks"></div>
+    </div>
+  </footer>
+</div>
+<div class="tooltip" id="tip"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ══════════════════════════════════════════════════
+   一、地理資料
+   h：地形高度（中原低、西陲高，形成階梯狀高原）
+   ══════════════════════════════════════════════════ */
+const REGIONS = {
+  liaodong: {name:'遼東', h:13, poly:[[835,78], [935,58], [952,128], [876,166], [840,150]]},
+  youzhou:  {name:'幽州', h:17, poly:[[682,109], [758,94], [835,78], [840,150], [876,166], [735,150], [665,190]]},
+  bingzhou: {name:'并州', h:23, poly:[[500,100], [570,105], [640,120], [682,109], [665,190], [630,220], [545,230]]},
+  jizhou:   {name:'冀州', h:11, poly:[[665,190], [735,150], [751,172], [775,182], [787,181], [790,196], [760,235], [660,290], [630,220]]},
+  qingzhou: {name:'青州', h:8, poly:[[790,196], [826,197], [841,189], [866,201], [884,197], [901,202], [897,213], [885,219], [868,221], [850,228], [840,242], [827,244], [816,257], [808,258], [801,273], [795,292], [760,235]]},
+  yanzhou:  {name:'兗州', h:8, poly:[[788,205], [799,284], [720,335], [660,290]]},
+  xuzhou:   {name:'徐州', h:7, poly:[[795,292], [828,298], [844,330], [861,355], [879,386], [720,335]]},
+  sili:     {name:'司隸', h:18, poly:[[545,230], [630,220], [660,290], [640,380], [560,390], [520,340]]},
+  yuzhou:   {name:'豫州', h:8, poly:[[660,290], [720,335], [700,410], [640,380]]},
+  liangzhou:{name:'涼州', h:29, poly:[[60,150], [150,138], [250,150], [350,118], [430,100], [500,100], [545,230], [390,250], [450,400], [200,400], [150,270]]},
+  yongzhou: {name:'雍州', h:24, poly:[[390,250], [545,230], [520,340], [450,400]]},
+  hanzhong: {name:'漢中', h:25, poly:[[450,400], [520,340], [560,390], [500,440]]},
+  yizhou:   {name:'益州', h:28, poly:[[450,400], [500,440], [560,500], [560,560], [580,620], [500,694], [430,745], [392,702], [352,676], [322,630], [296,588], [266,548], [238,504], [212,456], [200,400]]},
+  jingbei:  {name:'荊北', h:10, poly:[[560,390], [640,380], [700,410], [650,470], [560,500], [500,440]]},
+  jingnan:  {name:'荊南', h:8, poly:[[560,500], [650,470], [700,410], [700,520], [710,560], [650,600], [580,620], [560,560]]},
+  yangzhou: {name:'揚州', h:6,  poly:[[720,335], [879,386], [883,413], [871,431], [884,434], [870,480], [849,494], [835,519], [817,544], [807,564], [788,589], [762,599], [710,560], [700,520], [700,410]]},
+  jiaozhou: {name:'交州', h:5,  poly:[[580,620], [650,600], [710,560], [762,599], [742,629], [724,632], [706,649], [684,658], [663,662], [648,660], [633,665], [614,682], [595,686], [575,690], [547,696], [521,710], [508,716], [492,708], [474,698], [461,691], [430,745], [500,694]]}
+};
+
+const LAND = [
+  [817,121],[799,130],[789,147],[775,149],[774,156],[757,146],[753,157],[747,158],[751,172],
+  [775,182],[787,181],[797,192],[788,195],[788,205],[798,211],[811,210],[826,193],[841,189],
+  [866,201],[884,197],[901,202],[895,218],[880,216],[844,226],[848,231],[840,233],[840,242],
+  [827,244],[830,239],[824,239],[828,246],[808,258],[795,277],[796,283],[828,298],[848,350],
+  [861,355],[863,364],[875,370],[879,386],[859,384],[878,398],[883,413],[870,406],[851,413],
+  [871,431],[884,434],[874,442],[879,444],[879,458],[867,457],[872,466],[865,472],[868,485],
+  [851,490],[855,498],[847,496],[840,503],[835,519],[820,528],[823,535],[813,538],[817,530],
+  [806,535],[817,544],[807,549],[810,554],[803,566],[809,571],[812,565],[815,571],[795,571],
+  [800,578],[792,579],[792,585],[786,578],[788,589],[778,590],[782,592],[777,600],[762,599],
+  [763,608],[755,616],[742,629],[724,632],[713,649],[692,655],[687,651],[684,658],[673,653],
+  [663,662],[658,654],[652,665],[648,660],[633,665],[627,656],[623,676],[614,682],[609,674],
+  [604,683],[580,685],[528,703],[508,716],[492,708],[474,698],[461,691],[461,691],[430,745],
+  [392,702],[352,676],[322,630],[296,588],[266,548],[238,504],[212,456],[200,400],[150,270],
+  [60,150],[150,138],[250,150],[350,118],[430,100],[500,100],[570,105],[640,120],[682,109],
+  [758,94],[835,78],[935,58],[952,128],[876,166],[735,150],[817,121]
+];
+
+const COLOR = {
+  gongsun:'#93a5b6', yuanshao:'#9d89bd', caocao:'#6d92b6', dongzhuo:'#a97b70',
+  mateng:'#c3a069', liubiao:'#c0ad6b', liuzhang:'#79a79f', yuanshu:'#b78a9f',
+  sun:'#bd8474', shixie:'#a3ad86', zhangyang:'#9fa7b0',
+  wei:'#6d92b6', shu:'#7d9f6d', wu:'#bd8474', liubei:'#7d9f6d'
+};
+
+const ERAS = [
+  { year:191, title:'群雄割據',
+    desc:'董卓入京，天下大亂。關東諸侯各擁州郡：袁紹據河北、曹操屯兗州、孫堅起江東，劉表劉焉分據荊益。名義上仍奉漢室，實則已無共主。',
+    factions:[
+      {id:'yuanshao',  name:'袁紹',  cap:'鄴',   regions:['jizhou','qingzhou']},
+      {id:'caocao',    name:'曹操',  cap:'鄄城', regions:['yanzhou']},
+      {id:'gongsun',   name:'公孫瓚',cap:'薊',   regions:['youzhou','liaodong']},
+      {id:'zhangyang', name:'張楊',  cap:'晉陽', regions:['bingzhou']},
+      {id:'dongzhuo',  name:'董卓',  cap:'長安', regions:['sili','yongzhou']},
+      {id:'yuanshu',   name:'袁術',  cap:'壽春', regions:['yuzhou','xuzhou']},
+      {id:'liubiao',   name:'劉表',  cap:'襄陽', regions:['jingbei','jingnan']},
+      {id:'liuzhang',  name:'劉焉',  cap:'成都', regions:['yizhou','hanzhong']},
+      {id:'mateng',    name:'馬騰',  cap:'西涼', regions:['liangzhou']},
+      {id:'sun',       name:'孫堅',  cap:'吳',   regions:['yangzhou']},
+      {id:'shixie',    name:'士燮',  cap:'番禺', regions:['jiaozhou']}
+    ]},
+  { year:200, title:'官渡對峙',
+    desc:'曹操迎獻帝都許，挾天子以令諸侯，先後併呂布、袁術。袁紹盡有河北四州，帶甲十萬。兩雄夾河對峙，天下成敗決於官渡一戰。',
+    factions:[
+      {id:'caocao',   name:'曹操', cap:'許昌', regions:['yanzhou','yuzhou','sili','xuzhou']},
+      {id:'yuanshao', name:'袁紹', cap:'鄴',   regions:['youzhou','liaodong','jizhou','qingzhou','bingzhou']},
+      {id:'sun',      name:'孫權', cap:'吳',   regions:['yangzhou']},
+      {id:'liubiao',  name:'劉表', cap:'襄陽', regions:['jingbei','jingnan']},
+      {id:'liuzhang', name:'劉璋', cap:'成都', regions:['yizhou','hanzhong']},
+      {id:'mateng',   name:'馬騰', cap:'西涼', regions:['liangzhou','yongzhou']}
+    ]},
+  { year:208, title:'赤壁之戰',
+    desc:'曹操北定烏桓、南取荊州，劉琮束手，劉備敗走。八十萬眾順江而下，孫劉聯軍迎於赤壁。此戰若敗，江東再無屏障。',
+    factions:[
+      {id:'caocao',   name:'曹操', cap:'許昌', regions:['youzhou','liaodong','jizhou','qingzhou','bingzhou','yanzhou','xuzhou','sili','yuzhou','yongzhou','liangzhou','jingbei']},
+      {id:'sun',      name:'孫權', cap:'建業', regions:['yangzhou']},
+      {id:'liubei',   name:'劉備', cap:'公安', regions:['jingnan']},
+      {id:'liuzhang', name:'劉璋', cap:'成都', regions:['yizhou','hanzhong']}
+    ]},
+  { year:220, title:'三國鼎立',
+    desc:'曹丕代漢稱帝，劉備繼漢於蜀，孫權稱王於吳。魏據中原九州，蜀有山川之險，吳恃長江之固，鼎足之勢遂成。',
+    factions:[
+      {id:'wei', name:'魏', cap:'洛陽', regions:['youzhou','liaodong','jizhou','qingzhou','bingzhou','yanzhou','xuzhou','sili','yuzhou','yongzhou','liangzhou','jingbei']},
+      {id:'shu', name:'蜀', cap:'成都', regions:['yizhou','hanzhong']},
+      {id:'wu',  name:'吳', cap:'建業', regions:['yangzhou','jingnan','jiaozhou']}
+    ]},
+  { year:263, title:'蜀漢滅亡',
+    desc:'司馬昭三路伐蜀，鄧艾偷渡陰平，劉禪出降。三國鼎立之勢崩解，天下只餘魏吳隔江對峙，司馬氏代魏已在不遠。',
+    factions:[
+      {id:'wei', name:'魏', cap:'洛陽', regions:['youzhou','liaodong','jizhou','qingzhou','bingzhou','yanzhou','xuzhou','sili','yuzhou','yongzhou','liangzhou','jingbei','yizhou','hanzhong']},
+      {id:'wu',  name:'吳', cap:'建業', regions:['yangzhou','jingnan','jiaozhou']}
+    ]}
+];
+
+const CITIES = [
+  {n:'襄平', x:905, y:100, note:'遼東郡治，公孫氏三世所據'},
+  {n:'薊',   x:706, y:128, note:'幽州治所，北接烏桓'},
+  {n:'鄴',   x:660, y:232, note:'冀州治所，袁紹根據地'},
+  {n:'晉陽', x:590, y:186, note:'并州治所，表裡山河'},
+  {n:'平原', x:712, y:206, note:'青州屬郡，劉備曾為平原相'},
+  {n:'北海', x:796, y:222, note:'孔融所治，黃巾屢犯'},
+  {n:'洛陽', x:588, y:288, note:'東漢都城，董卓焚之', cap:1},
+  {n:'長安', x:478, y:300, note:'西京，董卓李傕所據'},
+  {n:'天水', x:382, y:292, note:'隴右門戶，出良馬'},
+  {n:'武威', x:288, y:190, note:'涼州治所，通西域'},
+  {n:'許昌', x:672, y:312, note:'曹操迎獻帝於此，魏五都之一'},
+  {n:'陳留', x:702, y:298, note:'曹操起兵之地'},
+  {n:'汝南', x:668, y:348, note:'汝南袁氏，四世三公'},
+  {n:'下邳', x:800, y:316, note:'徐州要衝，呂布殞命處'},
+  {n:'壽春', x:724, y:352, note:'淮南重鎮，袁術稱帝於此'},
+  {n:'宛',   x:600, y:368, note:'南陽郡治，荊州北門'},
+  {n:'襄陽', x:592, y:402, note:'劉表治所，控扼漢水'},
+  {n:'江陵', x:584, y:424, note:'南郡治所，荊州腹心'},
+  {n:'長沙', x:614, y:498, note:'荊南四郡之一'},
+  {n:'柴桑', x:692, y:442, note:'周瑜練兵處，赤壁前線'},
+  {n:'建業', x:778, y:370, note:'孫吳都城，石頭城', cap:1},
+  {n:'吳',   x:838, y:392, note:'吳郡，孫氏起家之地'},
+  {n:'會稽', x:834, y:432, note:'東南都會，山越雜處'},
+  {n:'漢中', x:502, y:390, note:'秦嶺之南，蜀漢門戶'},
+  {n:'成都', x:338, y:412, note:'益州治所，天府之國', cap:1},
+  {n:'永安', x:492, y:424, note:'白帝城，三峽咽喉'},
+  {n:'番禺', x:616, y:646, note:'交州治所，南海郡'}
+];
+
+/* 河川以 SVG 路徑書寫，載入時取樣為折線 */
+const RIVER_PATH = [
+  {d:'M255,245 C310,190 380,120 445,100 C505,84 545,96 575,120 C600,145 585,190 570,225 C555,258 555,285 585,300 C625,318 685,305 725,270 C755,243 760,196 742,160', name:'黃河'},
+  {d:'M330,440 C380,450 430,450 470,445 C510,438 550,428 585,424 C625,420 665,438 700,440 C740,442 772,412 792,386 C812,364 846,370 872,386', name:'長江'},
+  {d:'M482,396 C520,402 558,408 596,416 C622,422 638,432 648,442', name:'漢水'}
+];
+
+/* ══════════════════════════════════════════════════
+   二、工具
+   ══════════════════════════════════════════════════ */
+function samplePath(d, steps){
+  const out = [];
+  const cmds = d.match(/[MC][^MC]+/g) || [];
+  let cx = 0, cy = 0;
+  cmds.forEach(c=>{
+    const cmd = c[0];
+    const nums = c.slice(1).trim().split(/[\s,]+/).map(Number);
+    if (cmd === 'M'){
+      cx = nums[0]; cy = nums[1]; out.push([cx, cy]);
+    } else {
+      for (let i = 0; i + 5 < nums.length + 1; i += 6){
+        const x1 = nums[i], y1 = nums[i+1], x2 = nums[i+2], y2 = nums[i+3], x = nums[i+4], y = nums[i+5];
+        if (x === undefined) break;
+        for (let s = 1; s <= steps; s++){
+          const t = s / steps, u = 1 - t;
+          const bx = u*u*u*cx + 3*u*u*t*x1 + 3*u*t*t*x2 + t*t*t*x;
+          const by = u*u*u*cy + 3*u*u*t*y1 + 3*u*t*t*y2 + t*t*t*y;
+          out.push([bx, by]);
+        }
+        cx = x; cy = y;
+      }
+    }
+  });
+  return out;
+}
+
+function pointInPoly(x, y, pts){
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++){
+    const xi = pts[i].x, yi = pts[i].y, xj = pts[j].x, yj = pts[j].y;
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
+function shade(hex, k){
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  r = Math.min(255, r * k) | 0; g = Math.min(255, g * k) | 0; b = Math.min(255, b * k) | 0;
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+/* 城池歸屬州郡 */
+CITIES.forEach(c=>{
+  for (const id in REGIONS){
+    const p = REGIONS[id].poly.map(q=> ({x:q[0], y:q[1]}));
+    if (pointInPoly(c.x, c.y, p)){ c.region = id; break; }
+  }
+  if (!c.region) c.region = 'sili';
+});
+
+/* 州郡質心與面積（標籤定位用） */
+const REGINFO = {};
+for (const id in REGIONS){
+  const p = REGIONS[id].poly;
+  let a = 0, cx = 0, cy = 0;
+  for (let i = 0; i < p.length; i++){
+    const q = p[i], r = p[(i+1) % p.length];
+    const f = q[0]*r[1] - r[0]*q[1];
+    a += f; cx += (q[0] + r[0]) * f; cy += (q[1] + r[1]) * f;
+  }
+  a *= 0.5;
+  REGINFO[id] = { area: Math.abs(a), cx: cx/(6*a), cy: cy/(6*a) };
+}
+
+/* ══════════════════════════════════════════════════
+   三、相機與投影（正交軸測）
+   ══════════════════════════════════════════════════ */
+const MX = 506, MZ = 401;          // 地圖中心
+const FLOOR = -16;                 // 模型底板
+const BED = 2;                     // 陸塊基座頂面（州郡柱體自此往上長）
+const cv = document.getElementById('map');
+const ctx = cv.getContext('2d');
+let W = 1, H = 1, DPR = 1;
+
+const cam = { yaw:-0.18, el:1.00, zoom:1, S:1, CX:0, CY:0 };
+let cosY = 1, sinY = 0, sinE = 1, cosE = 0;
+
+function updateCam(){
+  cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw);
+  sinE = Math.sin(cam.el);  cosE = Math.cos(cam.el);
+}
+
+function proj(x, y, z){
+  const dx = x - MX, dz = z - MZ;
+  const X = dx*cosY - dz*sinY;
+  const Z = dx*sinY + dz*cosY;
+  const s = cam.S * cam.zoom;
+  return {
+    x: cam.CX + X*s,
+    y: cam.CY + (Z*sinE - y*cosE)*s,
+    d: Z*cosE - y*sinE
+  };
+}
+
+/* ══════════════════════════════════════════════════
+   四、幾何：擠出成柱體
+   ══════════════════════════════════════════════════ */
+function buildFaces(){
+  const faces = [];
+
+  /* 陸塊底板（深土色），補上州郡之間的細縫。深度設為無限遠，永遠最先畫 */
+  faces.push({ pts: LAND.map(p=>[p[0], BED, p[1]]), kind:'land', top:true, far:true });
+  for (let i = 0; i < LAND.length; i++){
+    const a = LAND[i], b = LAND[(i+1) % LAND.length];
+    if (a[0] === b[0] && a[1] === b[1]) continue;
+    faces.push({ pts:[[a[0],BED,a[1]],[b[0],BED,b[1]],[b[0],FLOOR,b[1]],[a[0],FLOOR,a[1]]], kind:'landwall' });
+  }
+
+  /* 各州郡柱體：頂面 + 彩色側牆 + 下方土層側牆
+     （土層放在每個州郡自己身上，避免海岸處溢出 LAND 輪廓而露餡） */
+  for (const id in REGIONS){
+    const r = REGIONS[id], h = r.h, p = r.poly;
+    faces.push({ pts: p.map(q=>[q[0], h, q[1]]), kind:'top', id });
+    for (let i = 0; i < p.length; i++){
+      const a = p[i], b = p[(i+1) % p.length];
+      const ex = b[0]-a[0], ez = b[1]-a[1];
+      const L = Math.hypot(ex, ez) || 1;
+      const nx = ez/L, nz = -ex/L;
+      faces.push({
+        pts:[[a[0],h,a[1]],[b[0],h,b[1]],[b[0],BED,b[1]],[a[0],BED,a[1]]],
+        kind:'wall', id, nx, nz
+      });
+      faces.push({
+        pts:[[a[0],BED,a[1]],[b[0],BED,b[1]],[b[0],FLOOR,b[1]],[a[0],FLOOR,a[1]]],
+        kind:'earth', id, nx, nz
+      });
+    }
+  }
+  return faces;
+}
+const FACES = buildFaces();
+
+/* 光源（地圖座標系，隨地圖旋轉，色調穩定） */
+const LX = -0.62, LZ = -0.42, LL = Math.hypot(LX, LZ);
+const LXN = LX/LL, LZN = LZ/LL;
+
+/* 河川折線 */
+const RIVERS = RIVER_PATH.map(r=>{
+  const pts = samplePath(r.d, 14);
+  return { name: r.name, pts: pts.map(p=>{
+    let h = 20;
+    for (const id in REGIONS){
+      if (pointInPoly(p[0], p[1], REGIONS[id].poly.map(q=>({x:q[0],y:q[1]})))){ h = REGIONS[id].h; break; }
+    }
+    return { x:p[0], y:h + 1.6, z:p[1] };
+  })};
+});
+
+/* ══════════════════════════════════════════════════
+   五、尺寸與適配
+   ══════════════════════════════════════════════════ */
+function resize(){
+  const r = cv.parentElement.getBoundingClientRect();
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = Math.max(1, r.width); H = Math.max(1, r.height);
+  cv.width = W * DPR; cv.height = H * DPR;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  fitScale();
+  draw();
+}
+
+function fitScale(){
+  updateCam();
+  const z = cam.zoom;
+  cam.zoom = 1; cam.S = 1; cam.CX = 0; cam.CY = 0;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const id in REGIONS){
+    const h = REGIONS[id].h;
+    REGIONS[id].poly.forEach(q=>{
+      const p = proj(q[0], h, q[1]);
+      if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
+      if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+    });
+  }
+  const bw = Math.max(1, x1 - x0), bh = Math.max(1, y1 - y0);
+  const s = Math.min(W / bw, H / bh) * 0.90;
+  cam.S = s;
+  cam.zoom = z;
+  const eff = s * z;
+  cam.CX = W/2 - (x0 + x1)/2 * eff;
+  cam.CY = H/2 - (y0 + y1)/2 * eff;
+}
+
+/* ══════════════════════════════════════════════════
+   六、繪製
+   ══════════════════════════════════════════════════ */
+let owner = {};
+let focus = null;
+let hoverRegion = null;
+
+function draw(){
+  updateCam();
+  ctx.clearRect(0, 0, W, H);
+  drawSea();
+  drawShadow();
+
+  const era = ERAS[eraIdx];
+  owner = {};
+  era.factions.forEach(f=> f.regions.forEach(r=> owner[r] = f));
+
+  /* 投影所有面（懸停州郡抬升 6 單位） */
+  const list = [];
+  for (let i = 0; i < FACES.length; i++){
+    const f = FACES[i];
+    const lift = (f.id && f.id === hoverRegion) ? 6 : 0;
+    const pr = new Array(f.pts.length);
+    let dsum = 0;
+    for (let j = 0; j < f.pts.length; j++){
+      const q = f.pts[j];
+      const y = (lift && q[1] > BED + 0.5) ? q[1] + lift : q[1];
+      const p = proj(q[0], y, q[2]);
+      pr[j] = p;
+      dsum += p.d;
+    }
+    list.push({ f, pr, d: f.far ? 1e9 : dsum / f.pts.length });
+  }
+  list.sort((a, b)=> b.d - a.d);
+
+  for (let i = 0; i < list.length; i++){
+    const it = list[i];
+    const f = it.f, pr = it.pr;
+
+    let col;
+    if (f.kind === 'land') col = '#9c8a66';
+    else if (f.kind === 'landwall') col = '#6b5a41';
+    else if (f.kind === 'earth'){
+      const t = Math.abs(f.nx * LXN + f.nz * LZN);
+      col = shade('#7a6647', 0.62 + 0.5 * t);
+      if (focus) col = shade(col, 0.94);
+    }
+    else {
+      const o = owner[f.id];
+      const base = o ? (COLOR[o.id] || '#b9ab8c') : '#cbbb98';
+      const dimmed = focus && o && o.id !== focus;
+      if (f.kind === 'top'){
+        const k = 0.92 + REGIONS[f.id].h * 0.0052;
+        col = shade(base, k);
+        if (dimmed) col = shade(col, 0.92);
+      } else {
+        const t = Math.abs(f.nx * LXN + f.nz * LZN);
+        col = shade(base, 0.46 + 0.56 * t);
+        if (dimmed) col = shade(col, 0.9);
+      }
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(pr[0].x, pr[0].y);
+    for (let j = 1; j < pr.length; j++) ctx.lineTo(pr[j].x, pr[j].y);
+    ctx.closePath();
+    ctx.fillStyle = col;
+    ctx.fill();
+
+    if (f.kind === 'top'){
+      ctx.strokeStyle = 'rgba(72,58,38,.42)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
+  drawRivers();
+  drawCities();
+  drawLabels();
+  drawCompass();
+}
+
+function drawSea(){
+  const g = ctx.createRadialGradient(W*0.5, H*0.42, 40, W*0.5, H*0.5, Math.max(W, H)*0.78);
+  g.addColorStop(0, '#eaf2f1');
+  g.addColorStop(0.55, '#dae5e5');
+  g.addColorStop(1, '#cbd8d8');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  /* 海面經緯格線（淡） */
+  ctx.save();
+  ctx.strokeStyle = 'rgba(140,168,170,.16)';
+  ctx.lineWidth = 1;
+  for (let z = -100; z <= 900; z += 90){
+    const a = proj(-120, 0, z), b = proj(1060, 0, z);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  for (let x = -100; x <= 1100; x += 90){
+    const a = proj(x, 0, -100), b = proj(x, 0, 900);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawShadow(){
+  ctx.save();
+  try { ctx.filter = 'blur(7px)'; } catch(e){}
+  ctx.fillStyle = 'rgba(58,48,32,.20)';
+  ctx.beginPath();
+  const off = 26;
+  LAND.forEach((p, i)=>{
+    const q = proj(p[0] + off, 0, p[1] + off);
+    i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y);
+  });
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawRivers(){
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  RIVERS.forEach(rv=>{
+    /* 河床暗邊 */
+    ctx.beginPath();
+    rv.pts.forEach((p, i)=>{
+      const q = proj(p.x, p.y, p.z);
+      i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y);
+    });
+    ctx.strokeStyle = 'rgba(58,74,88,.34)';
+    ctx.lineWidth = 4.2;
+    ctx.stroke();
+    ctx.strokeStyle = '#7ba1bb';
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+let cityAnchors = [];   // 城池標籤位置，供勢力大字避讓
+
+function drawCities(){
+  cityAnchors = [];
+  const pins = CITIES.map(c=>{
+    const h = REGIONS[c.region] ? REGIONS[c.region].h : 20;
+    const base = proj(c.x, h, c.y);
+    const top = proj(c.x, h + 26, c.y);
+    return { c, base, top, d: base.d };
+  }).sort((a, b)=> b.d - a.d);
+
+  pins.forEach(p=>{
+    const cap = !!p.c.cap;
+    cityAnchors.push({ x: p.top.x + 6 + p.c.n.length * 5, y: p.top.y - 1 });
+    ctx.beginPath();
+    ctx.moveTo(p.base.x, p.base.y);
+    ctx.lineTo(p.top.x, p.top.y);
+    ctx.strokeStyle = cap ? 'rgba(90,26,20,.85)' : 'rgba(58,47,34,.62)';
+    ctx.lineWidth = cap ? 1.7 : 1.2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(p.top.x, p.top.y, cap ? 4.2 : 3.1, 0, Math.PI*2);
+    ctx.fillStyle = cap ? '#8c2f28' : '#fffdf6';
+    ctx.fill();
+    ctx.strokeStyle = cap ? '#521a15' : '#3a2f22';
+    ctx.lineWidth = 1.1;
+    ctx.stroke();
+
+    ctx.font = '10px "Songti TC","Songti SC",serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255,252,244,.94)';
+    ctx.strokeText(p.c.n, p.top.x + 6, p.top.y - 1);
+    ctx.fillStyle = '#2e2519';
+    ctx.fillText(p.c.n, p.top.x + 6, p.top.y - 1);
+  });
+}
+
+/* 勢力大字的落點：以面積最大的州郡為錨，再避開城池標籤與其他大字 */
+const placedLabels = [];
+function labelSpot(ax, ay, size, tw){
+  const cands = [[0, 0]];
+  [26, 44, 64, 88, 116].forEach(r=>{
+    for (let k = 0; k < 8; k++){
+      const a = k * Math.PI / 4;
+      cands.push([Math.cos(a) * r, Math.sin(a) * r * 0.82]);
+    }
+  });
+  let bp = { x: ax, y: ay }, bs = -1e9;
+  for (let i = 0; i < cands.length; i++){
+    const x = ax + cands[i][0], y = ay + cands[i][1];
+    if (x < tw / 2 + 14 || x > W - tw / 2 - 14) continue;
+    if (y < size + 12 || y > H - 20) continue;
+    let md = 1e9;
+    for (let j = 0; j < cityAnchors.length; j++){
+      const d = Math.hypot(cityAnchors[j].x - x, cityAnchors[j].y - y);
+      if (d < md) md = d;
+    }
+    for (let j = 0; j < placedLabels.length; j++){
+      const d = Math.hypot(placedLabels[j].x - x, placedLabels[j].y - y) -
+                (size + placedLabels[j].s) * 0.62;
+      if (d < md) md = d;
+    }
+    const need = size * 0.78 + 13;
+    const over = md - need;
+    const sc = (over > 0 ? 60 + Math.min(over, 34) : over * 2.2) -
+               (Math.abs(cands[i][0]) + Math.abs(cands[i][1])) * 0.42;
+    if (sc > bs){ bs = sc; bp = { x, y }; }
+  }
+  placedLabels.push({ x: bp.x, y: bp.y, s: size });
+  return bp;
+}
+
+function drawLabels(){
+  placedLabels.length = 0;
+  const era = ERAS[eraIdx];
+  era.factions.forEach(f=>{
+    /* 錨點取面積最大的州郡質心，避免大字壓在州界 */
+    let best = null, bestId = null;
+    f.regions.forEach(rid=>{
+      const inf = REGINFO[rid];
+      if (inf && (!best || inf.area > best.area)){ best = inf; bestId = rid; }
+    });
+    if (!best) return;
+    const anchor = proj(best.cx, (REGIONS[bestId] ? REGIONS[bestId].h : 20) + 1, best.cy);
+    const size = f.regions.length >= 6 ? 30 : f.regions.length >= 3 ? 23 : f.regions.length === 2 ? 17 : 12.5;
+    const label = f.name.length > 2 ? f.name.slice(0, 2) : f.name;
+    const dim = focus && f.id !== focus;
+    const p = dim ? anchor : labelSpot(anchor.x, anchor.y, size, label.length * size);
+    ctx.save();
+    ctx.globalAlpha = dim ? 0.25 : 0.72;
+    ctx.font = '600 ' + size + 'px "Songti TC","Songti SC",serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(255,252,244,.66)';
+    ctx.strokeText(label, p.x, p.y);
+    ctx.fillStyle = '#332a1e';
+    ctx.fillText(label, p.x, p.y);
+    ctx.restore();
+  });
+
+  /* 州郡名（小字，只在放大時顯示） */
+  if (cam.zoom > 1.15){
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (cam.zoom - 1.15) * 2.4);
+    ctx.font = '10px "Songti TC","Songti SC",serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const id in REGIONS){
+      const inf = REGINFO[id];
+      const p = proj(inf.cx, REGIONS[id].h + 1, inf.cy);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255,252,244,.9)';
+      ctx.strokeText(REGIONS[id].name, p.x, p.y - 14);
+      ctx.fillStyle = '#5c5243';
+      ctx.fillText(REGIONS[id].name, p.x, p.y - 14);
+    }
+    ctx.restore();
+  }
+}
+
+function drawCompass(){
+  const r = 26, cx = W - 46, cy = 44;
+  ctx.save();
+  ctx.globalAlpha = .8;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(140,120,90,.4)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  /* 北向：地圖 -Z 方向，經 yaw 旋轉 */
+  const ang = Math.atan2(-Math.sin(cam.yaw) * 1, Math.cos(cam.yaw) * 1);
+  ctx.translate(cx, cy);
+  ctx.rotate(ang);
+  ctx.beginPath();
+  ctx.moveTo(0, -r + 5);
+  ctx.lineTo(5, r - 12);
+  ctx.lineTo(0, r - 18);
+  ctx.lineTo(-5, r - 12);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(140,47,40,.82)';
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.font = '9px "Songti TC",serif';
+  ctx.fillStyle = 'rgba(139,127,105,.9)';
+  ctx.textAlign = 'center';
+  ctx.fillText('北', cx, cy + r + 12);
+  ctx.restore();
+}
+
+/* ══════════════════════════════════════════════════
+   七、互動
+   ══════════════════════════════════════════════════ */
+let eraIdx = 0;
+const tip = document.getElementById('tip');
+
+function hitTest(mx, my){
+  /* 城池優先 */
+  for (const c of CITIES){
+    const h = REGIONS[c.region] ? REGIONS[c.region].h : 20;
+    const p = proj(c.x, h + 26, c.y);
+    if (Math.hypot(p.x - mx, p.y - my) < 10) return { type:'city', city:c };
+  }
+  /* 州郡頂面 */
+  let best = null;
+  for (const id in REGIONS){
+    const h = REGIONS[id].h + (id === hoverRegion ? 6 : 0);
+    const pr = REGIONS[id].poly.map(q=> proj(q[0], h, q[1]));
+    if (pointInPoly(mx, my, pr)){
+      let d = 0; pr.forEach(p=> d += p.d); d /= pr.length;
+      if (!best || d < best.d) best = { type:'region', id, d };
+    }
+  }
+  return best;
+}
+
+let drag = false, lastX = 0, lastY = 0, moved = 0;
+
+cv.addEventListener('mousedown', e=>{
+  drag = true; moved = 0; lastX = e.clientX; lastY = e.clientY;
+  cv.classList.add('drag');
+});
+window.addEventListener('mousemove', e=>{
+  if (drag){
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    moved += Math.abs(dx) + Math.abs(dy);
+    cam.yaw += dx * 0.0062;
+    cam.el = Math.max(0.16, Math.min(1.50, cam.el + dy * 0.0045));
+    draw();
+    return;
+  }
+  /* hover */
+  const r = cv.getBoundingClientRect();
+  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom){
+    tip.classList.remove('on');
+    if (hoverRegion){ hoverRegion = null; draw(); }
+    return;
+  }
+  const hit = hitTest(e.clientX - r.left, e.clientY - r.top);
+  const nh = (hit && hit.type === 'region') ? hit.id : null;
+  if (nh !== hoverRegion){ hoverRegion = nh; draw(); }
+
+  if (hit && hit.type === 'city'){
+    tip.textContent = hit.city.n + '　' + hit.city.note;
+    tip.classList.add('on');
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top = (e.clientY + 16) + 'px';
+  } else if (hit && hit.type === 'region'){
+    const f = ERAS[eraIdx].factions.find(x=> x.regions.indexOf(hit.id) >= 0);
+    tip.textContent = REGIONS[hit.id].name + (f ? '　' + f.name : '　無主') +
+      '　海拔 ' + REGIONS[hit.id].h;
+    tip.classList.add('on');
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top = (e.clientY + 16) + 'px';
+  } else {
+    tip.classList.remove('on');
+  }
+});
+window.addEventListener('mouseup', ()=>{ drag = false; cv.classList.remove('drag'); });
+
+cv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  cam.zoom = Math.max(0.55, Math.min(2.6, cam.zoom * (e.deltaY > 0 ? 0.92 : 1.08)));
+  draw();
+}, {passive:false});
+
+cv.addEventListener('dblclick', ()=>{
+  cam.yaw = -0.18; cam.el = 1.00; cam.zoom = 1;
+  fitScale(); draw();
+});
+
+cv.addEventListener('click', e=>{
+  if (moved > 6) return;
+  const r = cv.getBoundingClientRect();
+  const hit = hitTest(e.clientX - r.left, e.clientY - r.top);
+  if (hit && hit.type === 'region'){
+    const f = ERAS[eraIdx].factions.find(x=> x.regions.indexOf(hit.id) >= 0);
+    focus = (f && focus !== f.id) ? f.id : null;
+  } else {
+    focus = null;
+  }
+  draw(); renderSide();
+});
+
+/* 視角預設 */
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-cam]');
+  if (!b) return;
+  document.querySelectorAll('[data-cam]').forEach(x=> x.classList.toggle('on', x === b));
+  const m = b.getAttribute('data-cam');
+  if (m === 'iso'){ cam.yaw = -0.18; cam.el = 1.00; cam.zoom = 1; }
+  if (m === 'top'){ cam.yaw = 0; cam.el = 1.52; cam.zoom = 1; }
+  if (m === 'low'){ cam.yaw = -0.55; cam.el = 0.52; cam.zoom = 1; }
+  fitScale(); draw();
+});
+
+/* ══════════════════════════════════════════════════
+   八、側欄與時間軸
+   ══════════════════════════════════════════════════ */
+function renderSide(){
+  const era = ERAS[eraIdx];
+  document.getElementById('yearTxt').textContent = era.year;
+  document.getElementById('eraTxt').textContent = era.title;
+  document.getElementById('sideTitle').textContent = era.title;
+  document.getElementById('sideDesc').textContent = era.desc;
+
+  const total = era.factions.reduce((s, f)=> s + f.regions.length, 0);
+  let h = '';
+  era.factions.slice().sort((a, b)=> b.regions.length - a.regions.length).forEach(f=>{
+    const col = f.color || COLOR[f.id] || '#b9ab8c';
+    h += '<div class="frow' + (focus === f.id ? ' on' : '') + '" data-focus="' + f.id + '">' +
+         '<div class="fchip" style="background:' + col + '"></div>' +
+         '<div class="fmeta"><div class="fn">' + f.name + '</div><div class="fsub">都 ' + f.cap + '</div></div>' +
+         '<div class="fnum">' + f.regions.length + ' 州</div></div>';
+  });
+  h += '<div class="fsub" style="margin:16px 0 0 8px">共 ' + total + ' 州郡　' + era.factions.length + ' 勢力</div>';
+  document.getElementById('factionList').innerHTML = h;
+}
+
+function renderTicks(){
+  const max = ERAS.length - 1;
+  let h = '';
+  ERAS.forEach((e, i)=>{
+    const p = max === 0 ? 0 : i / max;
+    h += '<div class="tick' + (i === eraIdx ? ' on' : '') + '" data-era="' + i + '" ' +
+         'style="left:calc(7px + (100% - 14px) * ' + p + ')">' +
+         '<div class="dot"></div><div class="lb">' + e.year + '</div></div>';
+  });
+  document.getElementById('ticks').innerHTML = h;
+}
+
+document.addEventListener('click', e=>{
+  const fr = e.target.closest('[data-focus]');
+  if (fr){
+    const id = fr.getAttribute('data-focus');
+    focus = focus === id ? null : id;
+    draw(); renderSide();
+    return;
+  }
+  const tk = e.target.closest('[data-era]');
+  if (tk){
+    eraIdx = Number(tk.getAttribute('data-era'));
+    focus = null;
+    document.getElementById('slider').value = eraIdx;
+    draw(); renderSide(); renderTicks();
+  }
+});
+
+document.getElementById('slider').addEventListener('input', function(){
+  eraIdx = Number(this.value);
+  focus = null;
+  draw(); renderSide(); renderTicks();
+});
+
+/* ══════════════════════════════════════════════════
+   九、啟動
+   ══════════════════════════════════════════════════ */
+const _q = new URLSearchParams(location.search).get('e');
+if (_q !== null && ERAS[Number(_q)]) { eraIdx = Number(_q); document.getElementById('slider').value = eraIdx; }
+const _c = new URLSearchParams(location.search).get('c');
+if (_c === 'top'){ cam.yaw = 0; cam.el = 1.52; }
+if (_c === 'low'){ cam.yaw = -0.55; cam.el = 0.52; }
+if (_c === 'top' || _c === 'low'){
+  document.querySelectorAll('[data-cam]').forEach(b=> b.classList.toggle('on', b.getAttribute('data-cam') === _c));
+}
+
+resize();
+renderSide();
+renderTicks();
+window.addEventListener('resize', resize);
+})();
+</script>
+</body>
+</html>
