@@ -95,7 +95,7 @@ click('savegame');
 click('endturn');                       // 推進一季
 click('loadstart');                     // 載入回行軍建立時
 const m = sgz.state.marches.find(x=> x.id === mid);
-check(m && m.eta === 5, '行軍狀態還原（eta = ' + (m && m.eta) + '）');
+check(m && m.eta === 20, '行軍狀態還原（eta = ' + (m && m.eta) + '）');
 check(m && m.disp >= 0 && m.disp <= 1, '行軍顯示進度有值（' + (m && m.disp) + '）');
 
 console.log('=== 8. 存檔損毀時的保護 ===');
